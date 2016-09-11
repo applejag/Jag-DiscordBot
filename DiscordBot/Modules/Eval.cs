@@ -59,7 +59,7 @@ namespace DiscordBot.Modules {
 				if (replyMessage.User != null && replyMessage.State == MessageState.Normal) {
 
 					// Try manually parse it
-					string[] args; string rest;
+					List<string> args; string rest;
 					Command cmd = CommandHandler.TryParseCommand(this, e.After.Text, CommandPerm.None, out args, out rest);
 					if (cmd == null || cmd.name != "eval") return;
 

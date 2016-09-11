@@ -287,7 +287,7 @@ namespace DiscordBot.Modules {
 				Channel channel = server.GetChannel(discord_channel);
 				User user = server.GetUser(discord_user);
 
-				await SafeSendMessage(channel, ":dancer:**Congratulations " + user.Mention + " !!** :confetti_ball::tada:\n\n:yellow_heart::purple_heart: You just promoted yourself from *" + old + "* to **" + rank + "** :metal::boom:");
+				await channel.SafeSendMessage(":dancer:**Congratulations " + user.Mention + " !!** :confetti_ball::tada:\n\n:yellow_heart::purple_heart: You just promoted yourself from *" + old + "* to **" + rank + "** :metal::boom:");
 				await channel.SendFileFromWeb(URLGetProfilePicture(profileIconId));
 			}
 

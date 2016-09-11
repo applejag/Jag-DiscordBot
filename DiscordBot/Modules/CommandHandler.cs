@@ -3,6 +3,7 @@ using DiscordBot.Utility;
 using System.Linq;
 using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace DiscordBot.Modules {
 	public sealed class CommandHandler : Module {
@@ -19,8 +20,8 @@ namespace DiscordBot.Modules {
 		async void Client_MessageReceived(object sender, MessageEventArgs e) {
 			if (e.User.IsBot) return;
 			if (!bot.initialized) return;
+			if (string.IsNullOrWhiteSpace(e.Message.Text)) return;
 			
-			string[] args; string rest;
 			bool isWhitelisted = bot.CheckIsWhitelisted(e.User);
 
 			CommandPerm permissions = e.User.Id == bot.client.CurrentUser.Id
@@ -30,11 +31,12 @@ namespace DiscordBot.Modules {
 												: CommandPerm.None);
 
 			foreach (var m in bot.modules) {
+				List<string> args; string rest;
 				Command cmd = TryParseCommand(m, e.Message.Text, permissions, out args, out rest);
 				if (cmd != null) {
 					try {
 						LogHelper.LogInformation("Command \"" + cmd.name + "\" ran by " + e.User.Name + "#" + e.User.Discriminator);
-						await cmd.Callback(e, args, rest);
+						await cmd.Callback(e, args.ToArray(), rest);
 					} catch (Exception err) {
 						LogHelper.LogException("Error executing command \"" + cmd.name + "\"", err);
 						await e.Message.SafeEdit("Error executing command!\n```" + err.Message + "```");
@@ -44,16 +46,16 @@ namespace DiscordBot.Modules {
 			}
 		}
 
-		public static Command TryParseCommand(Module module, string input, CommandPerm permissions, out string[] args, out string rest) {
-			rest = "";
-			args = input.Split(' ');
+		public static Command TryParseCommand(Module module, string input, CommandPerm permissions, out List<string> args, out string rest) {
+			rest = string.Empty;
+			args = input.Split(' ').ToList();
 			int argindex = 0;
 
-			if (args.Length == 0) return null;
+			if (args.Count == 0) return null;
 			if (string.IsNullOrWhiteSpace(args[0])) return null;
 
 			// Check if mentioned
-			if (args[0][0] == '@' && (
+			if (args[0][0] == '@' && args[0].Length > 1 && (
 					args[0].Substring(1) == module.bot.client.CurrentUser.Name
 				|| args[0].Substring(1) == module.bot.client.CurrentUser.Name + "#" + module.bot.client.CurrentUser.Discriminator
 				|| args[0] == module.bot.client.CurrentUser.NicknameMention

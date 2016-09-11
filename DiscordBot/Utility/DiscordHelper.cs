@@ -64,11 +64,20 @@ namespace DiscordBot.Utility {
 			return mention;
 		}
 
+		public static async Task<Message> SafeSendMessage(this User user, string text) {
+			Message msg = await user.PrivateChannel.SendMessage(text);
+			try {
+				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () => msg.State != MessageState.Queued);
+			} catch {
+				throw new TimeoutException("Timeout while waiting for message to be sent.");
+			}
+			return msg;
+		}
 
 		public static async Task<Message> SafeSendMessage(this Channel channel, string text) {
 			Message msg = await channel.SendMessage(text);
 			try {
-				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () => msg.State != MessageState.Normal);
+				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () => msg.State != MessageState.Queued);
 			} catch {
 				throw new TimeoutException("Timeout while waiting for message to be sent.");
 			}
@@ -86,26 +95,12 @@ namespace DiscordBot.Utility {
 		}
 
 		public static async Task<Message> SafeEdit(this Message message, string newText) {
-			DateTime? editBefore = message.EditedTimestamp;
-			DateTime msgBefore = message.Timestamp;
 			await message.Edit(newText);
-			try {
-				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () =>
-					message.Channel.GetMessage(message.Id).EditedTimestamp != editBefore
-				);
-			} catch {
-				throw new TimeoutException("Timeout while waiting for message to be edited.");
-			}
-			return message;
+			return message.Channel.GetMessage(message.Id);
 		}
 
 		public static async Task<Message> SafeDelete(this Message message) {
 			await message.Delete();
-			/*try {
-				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () => !message.Channel.Messages.Contains(message));
-			} catch {
-				throw new TimeoutException("Timeout while waiting for message to be deleted.");
-			}*/
 			return message;
 		}
 

@@ -12,6 +12,7 @@ namespace DiscordBot {
 
 	public sealed class Program {
 		internal static Bot[] bots;
+		internal static bool restarting = false;
 
 		[DllImport("Kernel32")]
 		static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
@@ -58,6 +59,14 @@ namespace DiscordBot {
 			for (int i=0; i<tokens.Length; i++) {
 				bots[i] = new Bot(tokens[i]);
 			}
+		}
+
+		internal static void RestartBots() {
+			restarting = true;
+			ShutdownBots();
+			Thread.Sleep(2500);
+			StartupBots();
+			restarting = false;
 		}
 
 		static void Main(string[] args) {

@@ -80,6 +80,7 @@ namespace DiscordBot {
 				modules.Add(new ImageStorage());
 				modules.Add(new Eval());
 				modules.Add(new Admin("self"));
+				modules.Add(new LuaEval());
 			}
 			#endregion
 

@@ -17,10 +17,6 @@ namespace DiscordBot.Modules {
 		public virtual bool useModulePrefix { get; } = true;
 
 		#region Safe Message Wrappers
-		public static async Task<Message> SafeSendMessage(Channel channel, string text) {
-			return await channel.SafeSendMessage(text);
-		}
-
 		public static async Task<Message> DynamicSendMessage(MessageEventArgs e, string text) {
 			return await DiscordHelper.DynamicSendMessage(e, text);
 		}

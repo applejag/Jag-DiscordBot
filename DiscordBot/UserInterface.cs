@@ -147,11 +147,11 @@ namespace DiscordBot {
 		}
 
 		public static void MainLoop() {
-			while (Program.bots != null && Program.bots.All(bot => bot != null && bot.valid)) {
+			while (Program.restarting || (Program.bots != null && Program.bots.All(bot => bot != null && bot.valid))) {
 				DrawInputLine();
 
 				ConsoleKeyInfo info = Console.ReadKey(true);
-				if (Program.bots == null || Program.bots.Any(bot => bot == null || !bot.valid)) break;
+				if (!Program.restarting && (Program.bots == null || Program.bots.Any(bot => bot == null || !bot.valid))) break;
 
 				if (char.IsControl(info.KeyChar)) {
 					switch (info.Key) {

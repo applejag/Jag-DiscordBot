@@ -230,25 +230,25 @@ namespace DiscordBot.Modules {
 					if (bot.isSelfbot) {
 						await DynamicSendMessage(e, header);
 						for (int i = 0; i < messages.Length; i++) {
-							await SafeSendMessage(e.Channel, "```" + messages[i] + "```");
+							await e.Channel.SafeSendMessage("```" + messages[i] + "```");
 						}
-						await SafeSendMessage(e.Channel, footer);
+						await e.Channel.SafeSendMessage(footer);
 					} else {
 						if (e.Channel.Id == e.User.PrivateChannel.Id) {
 							// Is in users private channel
 							await DynamicSendMessage(e, header);
 							for (int i = 0; i < messages.Length; i++) {
-								await SafeSendMessage(e.Channel, "```" + messages[i] + "```");
+								await e.Channel.SafeSendMessage("```" + messages[i] + "```");
 							}
-							await SafeSendMessage(e.Channel, footer);
+							await e.Channel.SafeSendMessage(footer);
 						} else {
 							// Is somewhere public
 							await DynamicSendMessage(e, "A list of available images is being sent to you in private.");
-							await SafeSendMessage(e.User.PrivateChannel, header);
+							await e.User.PrivateChannel.SafeSendMessage(header);
 							for (int i = 0; i < messages.Length; i++) {
-								await SafeSendMessage(e.User.PrivateChannel, "```" + messages[i] + "```");
+								await e.User.PrivateChannel.SafeSendMessage("```" + messages[i] + "```");
 							}
-							await SafeSendMessage(e.User.PrivateChannel, footer);
+							await e.User.PrivateChannel.SafeSendMessage(footer);
 						}
 					}
 				} catch (Exception err) {

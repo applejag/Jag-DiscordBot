@@ -120,13 +120,13 @@ namespace DiscordBot.Modules {
 
 				// Start sending the messages
 				LogHelper.LogWarning("Starting to send log to user. This may take a while...");
-				await SafeSendMessage(e.Channel, "**Bots console log** *(approx " + LogHelper.log.Count + " lines)*");
+				await e.Channel.SafeSendMessage("**Bots console log** *(approx " + LogHelper.log.Count + " lines)*");
 				for (int i = 0; i < messages.Length; i++) {
-					await SafeSendMessage(e.Channel, "```" + messages[i] + "```");
+					await e.Channel.SafeSendMessage("```" + messages[i] + "```");
 				}
 				TimeSpan time = DateTime.Now - start;
 				LogHelper.LogSuccess(string.Format("Finished sending log (took {0:0.00} seconds)", time.TotalSeconds));
-				await SafeSendMessage(e.Channel, string.Format("**Submission of log is now complete.** _(took {0:0.00} seconds)_", time.TotalSeconds));
+				await e.Channel.SafeSendMessage(string.Format("**Submission of log is now complete.** _(took {0:0.00} seconds)_", time.TotalSeconds));
 			}
 		}
 
@@ -163,9 +163,15 @@ namespace DiscordBot.Modules {
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
 
 			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
-				Program.ShutdownBots();
-				await Task.Delay(1500);
-				Program.StartupBots();
+				try {
+					Message status = await DynamicSendMessage(e, "Restarting... *(this may take a while)*");
+					Program.RestartBots();
+					await DynamicEditMessage(status, e.User, "Bot has restarted!");
+				} catch {
+
+				} finally {
+					Program.ShutdownBots();
+				}
 			}
 		}
 		#endregion
