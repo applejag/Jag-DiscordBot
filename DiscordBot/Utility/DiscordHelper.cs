@@ -1,6 +1,8 @@
 ﻿using Discord;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -132,13 +134,12 @@ namespace DiscordBot.Utility {
 				);
 			}
 		}
-
+		
 		/// <summary>
 		/// Downloads a file to a temporaryly from <paramref name="url"/> and sends it.
 		/// </summary>
 		/// <param name="channel">The channel the file will be sent to</param>
 		/// <param name="url">The url to download the file from</param>
-		/// <returns></returns>
 		public static async Task<Message> SendFileFromWeb(this Channel channel, string url) {
 			using (var client = new WebClient()) {
 				LogHelper.LogInformation("Started downloading file from \"" + url + "\"");
@@ -153,13 +154,46 @@ namespace DiscordBot.Utility {
 				await client.DownloadFileTaskAsync(url, filename);
 				double span = (DateTime.Now - start).TotalSeconds;
 
-				Thread.Sleep(300);
+				await Task.Delay(300);
 				
 				LogHelper.LogSuccess(string.Format("Download complete! File has been saved at \"{0}\" (took {1:0.00} {2})", filename, span, span == 1d ? "second" : "seconds"));
 
 				// Time to send it
 				Message message = await channel.SafeSendFile(filename);
 				LogHelper.LogSuccess("File sent into channel '" + channel.Name + "'");
+
+				// Now we can remove the file
+				File.Delete(filename);
+				LogHelper.LogInformation("Temporary file has been removed.");
+
+				return message;
+			}
+		}
+
+
+		/// <summary>
+		/// Saves <paramref name="image"/> to a temporary location, sends it, then deletes it.
+		/// </summary>
+		/// <param name="channel">The channel the file will be sent to</param>
+		/// <param name="image">The image to be sent</param>
+		public static async Task<Message> SendImage(this Channel channel, Image image) {
+			using (var client = new WebClient()) {
+				LogHelper.LogInformation("Sending raw image...");
+
+				DateTime start = DateTime.Now;
+				// Create directory if needed
+
+				string tmp = Path.GetTempFileName();
+				string filename = Path.ChangeExtension(tmp, ".png");
+				new FileInfo(filename).Directory.Create();
+
+				image.Save(filename, ImageFormat.Png);
+								
+				// Time to send it
+				Message message = await channel.SafeSendFile(filename);
+
+				double span = (DateTime.Now - start).TotalSeconds;
+				LogHelper.LogSuccess(string.Format("Image sent to channel '{0}' (took {1:0.00} {2})", channel.Name, span, span == 1d ? "second" : "seconds"));
 
 				// Now we can remove the file
 				File.Delete(filename);

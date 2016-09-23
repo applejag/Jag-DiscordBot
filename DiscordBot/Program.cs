@@ -1,5 +1,5 @@
 ﻿using Discord;
-using DiscordBot.Modules;
+using Discord.Commands;
 using DiscordBot.Utility;
 using Nito.AsyncEx.Synchronous;
 using System;
@@ -58,6 +58,7 @@ namespace DiscordBot {
 
 			for (int i=0; i<tokens.Length; i++) {
 				bots[i] = new Bot(tokens[i]);
+				
 			}
 		}
 
@@ -75,7 +76,7 @@ namespace DiscordBot {
 
 				SetConsoleCtrlHandler(handler, true);
 
-				System.AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+				AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 				
 				LogHelper.LogCenter("Program start", ConsoleColor.Yellow);
 

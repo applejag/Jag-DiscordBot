@@ -11,10 +11,19 @@ namespace DiscordBot.Modules {
 		public abstract string id { get; }
 		public abstract string name { get; }
 		public abstract CommandPerm requires { get; }
-		public abstract Task Callback(MessageEventArgs e, string[] args, string rest);
+		public abstract Task<bool> Callback(MessageEventArgs e, string[] args, string rest);
 		public abstract Bot bot { get; internal set; }
 		public abstract Module module { get; internal set; }
 		public virtual bool useModulePrefix { get; } = true;
+
+		public abstract string usage { get; }
+		public abstract string description { get; }
+		public string GetInformation() {
+			return string.Format("**{0}**\n\n**Description:** ```\n{1}```\n**Usage:** `{2}`",
+				module.GetType().Name + " : " + name,
+				description,
+				(string.IsNullOrWhiteSpace(module.modulePrefix) ? name : module.modulePrefix + " " + name) + " " + usage).Trim();
+		}
 
 		#region Safe Message Wrappers
 		public static async Task<Message> DynamicSendMessage(MessageEventArgs e, string text) {

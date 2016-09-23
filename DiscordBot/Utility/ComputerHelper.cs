@@ -11,15 +11,16 @@ namespace DiscordBot.Utility {
 	public static class ComputerHelper {
 
 		private static PerformanceCounter cpu;
-		private static List<float> cpuHistory;
+		private static Dictionary<DateTime, float> cpuHistory;
 
-		private const int HISTORY_SIZE = 3600;
+		internal const int HISTORY_MAX_AGE_SECONDS = 3600;
+		internal const int HISTORY_MAX_AGE_MINUTES = 60;
 		private const double TIMER_INTERVAL = 1000;
 		private static System.Timers.Timer cpuCheck;
 
 		public static void Init() {
 			cpu = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-			cpuHistory = new List<float>();
+			cpuHistory = new Dictionary<DateTime, float>();
 			cpuCheck = new System.Timers.Timer(TIMER_INTERVAL);
 			cpuCheck.Elapsed += HandleTimer;
 			cpuCheck.Start();
@@ -36,9 +37,9 @@ namespace DiscordBot.Utility {
 		}
 
 		public static void HandleTimer(object sender, EventArgs args) {
-			cpuHistory.Add(cpu.NextValue());
-			if (cpuHistory.Count > HISTORY_SIZE)
-				cpuHistory.RemoveAt(0);
+			var now = DateTime.Now;
+			cpuHistory.Add(now, cpu.NextValue());
+			cpuHistory.RemoveAll(x => (now - x.Key).TotalSeconds > HISTORY_MAX_AGE_SECONDS);
 		}
 
 		public static long GetAvailableMemory() {
@@ -51,8 +52,12 @@ namespace DiscordBot.Utility {
 			return currentProcess.WorkingSet64 + currentProcess.PagedMemorySize64;
 		}
 
-		public static float GetCPUUsage(int millisecondTimespan = 1000) {
-			return cpuHistory.Last();
+		public static float GetCPUUsage() {
+			return cpuHistory[cpuHistory.Keys.Max()];
+		}
+
+		public static Dictionary<DateTime, float> GetCPUHistory() {
+			return cpuHistory;
 		}
 	}
 }

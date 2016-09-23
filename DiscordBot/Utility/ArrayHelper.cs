@@ -37,5 +37,14 @@ namespace DiscordBot.Utility {
 			}
 			return txt;
 		}
+
+		public static int RemoveAll<K,V>(this Dictionary<K,V> dict, Predicate<KeyValuePair<K,V>> predicate) {
+			K[] kill = (dict.Where(kv => predicate(kv)) as Dictionary<K,V>)?.Keys.ToArray();
+			if (kill != null) {
+				foreach (K key in kill)
+					dict.Remove(key);
+				return kill.Length;
+			} else return 0;
+		}
 	}
 }

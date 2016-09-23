@@ -97,13 +97,13 @@ namespace DiscordBot {
 								err = "Please enter a valid command!";
 							else {
 								string t = string.Join(" ", input.SubArray(1));
-								string pattern = "^[a-zA-Z0-9\\.\\-]*$";
+								string pattern = "^[a-zA-Z0-9\\.\\-_]*$";
 								if (t.Length == 88 && Regex.IsMatch(t, pattern))
 									tokens.Add(t);
 								else if (t.Length == 63 && t.StartsWith("Bot ") && Regex.IsMatch(t.Substring(4), pattern))
-									tokens.Add(t);
+									tokens.Add(t.Substring(4));
 								else if (t.Length == 59 && Regex.IsMatch(t, pattern))
-									tokens.Add("Bot " + t);
+									tokens.Add(t);
 								else
 									err = "Please enter a valid token!";
 							}

@@ -29,7 +29,7 @@ namespace DiscordBot {
 
 		public Bot(string token) {
 			this.token = token;
-			isSelfbot = !token.StartsWith("Bot ");
+			isSelfbot = token.Length > 70;
 			activeSince = DateTime.Now;
 
 			try {
@@ -78,6 +78,7 @@ namespace DiscordBot {
 			if (isSelfbot) {
 				// Selfbot-only modules
 				modules.Add(new ImageStorage());
+				modules.Add(new ImageGenerator());
 				modules.Add(new Eval());
 				modules.Add(new Admin("self"));
 				modules.Add(new LuaEval());
@@ -89,6 +90,8 @@ namespace DiscordBot {
 				// Bot acc-only modules
 				modules.Add(new League());
 				modules.Add(new Admin("bot"));
+
+				
 			}
 			#endregion
 
@@ -110,7 +113,7 @@ namespace DiscordBot {
 			try {
 				LogHelper.LogInformation("Connecting to discord...");
 				client = new DiscordClient();
-				await client.Connect(token);
+				await client.Connect(token, isSelfbot ? TokenType.User : TokenType.Bot);
 
 				LogHelper.LogSuccess("Connection established!");
 				valid = true;

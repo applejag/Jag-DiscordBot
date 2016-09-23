@@ -17,6 +17,11 @@ namespace DiscordBot.Modules {
 			client.MessageReceived -= Client_MessageReceived;
 		}
 
+		public event EventHandler<MessageEventArgs> CommandParseFailed;
+		private void OnCommandParseFailed(object sender, MessageEventArgs e) {
+			CommandParseFailed?.Invoke(sender, e);
+		}
+
 		async void Client_MessageReceived(object sender, MessageEventArgs e) {
 			if (e.User.IsBot) return;
 			if (!bot.initialized) return;
@@ -31,27 +36,35 @@ namespace DiscordBot.Modules {
 												: CommandPerm.None);
 
 			foreach (var m in bot.modules) {
-				List<string> args; string rest;
+				string[] args; string rest;
 				Command cmd = TryParseCommand(m, e.Message.Text, permissions, out args, out rest);
 				if (cmd != null) {
+					if (rest.Trim() == "?" || rest.Trim() == "-h") {
+						await DiscordHelper.DynamicSendMessage(e, cmd.GetInformation());
+						return;
+					}
+
 					try {
 						LogHelper.LogInformation("Command \"" + cmd.name + "\" ran by " + e.User.Name + "#" + e.User.Discriminator);
-						await cmd.Callback(e, args.ToArray(), rest);
+						if (!await cmd.Callback(e, args, rest))
+							await DiscordHelper.DynamicSendMessage(e, cmd.GetInformation());
 					} catch (Exception err) {
 						LogHelper.LogException("Error executing command \"" + cmd.name + "\"", err);
-						await e.Message.SafeEdit("Error executing command!\n```" + err.Message + "```");
+						await DiscordHelper.DynamicSendMessage(e, "Error executing command!\n```" + err.Message + "```");
 					}
 					return;
 				}
 			}
+
+			OnCommandParseFailed(sender, e);
 		}
 
-		public static Command TryParseCommand(Module module, string input, CommandPerm permissions, out List<string> args, out string rest) {
+		public static Command TryParseCommand(Module module, string input, CommandPerm permissions, out string[] args, out string rest) {
 			rest = string.Empty;
-			args = input.Split(' ').ToList();
+			args = input.Split(' ');
 			int argindex = 0;
 
-			if (args.Count == 0) return null;
+			if (args.Length == 0) return null;
 			if (string.IsNullOrWhiteSpace(args[0])) return null;
 
 			// Check if mentioned
@@ -62,6 +75,9 @@ namespace DiscordBot.Modules {
 			)) {
 				argindex++;
 			}
+
+			// Got enough arguments?
+			if (argindex >= args.Length) return null;
 
 			// Check if prefix
 			if (args[argindex].StartsWith(CMD_PREFIX)) {

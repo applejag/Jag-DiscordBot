@@ -20,8 +20,10 @@ namespace DiscordBot.Modules {
 		public sealed class CmdEval : Command<Eval> {
 			public override string name { get; } = "eval";
 			public override CommandPerm requires { get; } = CommandPerm.None;
+			public override string description { get; } = "Uses NCalc to evaluate a mathematical expression. Supports functions, ex: sqrt() but also dates in the format #2014-09-25# plus additional methods for handleing dates, ex: days(#2014-09-25#) gives the differance in days to said date.";
+			public override string usage { get; } = "<Math>";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				await e.Channel.SendIsTyping();
 
 				string reply;
@@ -39,6 +41,7 @@ namespace DiscordBot.Modules {
 
 				Message replyMessage = await e.Channel.SafeSendMessage(reply);
 				me.evaluvated.Add(e.Message.Id, replyMessage.Id);
+				return true;
 			}
 		}
 
@@ -59,7 +62,7 @@ namespace DiscordBot.Modules {
 				if (replyMessage.User != null && replyMessage.State == MessageState.Normal) {
 
 					// Try manually parse it
-					List<string> args; string rest;
+					string[] args; string rest;
 					Command cmd = CommandHandler.TryParseCommand(this, e.After.Text, CommandPerm.None, out args, out rest);
 					if (cmd == null || cmd.name != "eval") return;
 

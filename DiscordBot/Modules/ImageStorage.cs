@@ -41,8 +41,10 @@ namespace DiscordBot.Modules {
 		public sealed class CmdCache : Command<ImageStorage> {
 			public override string name { get; } = "cache";
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
+			public override string description { get; } = "Since the bot does not download /everything/ some manual caching is sometimes needed. All this does is giving the bot a heads up that it may have missed some messages. Espesually useful for the `save` command who doesn't cache automatically.";
+			public override string usage { get; } = "";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				int num = 100;
 				int tmp;
 
@@ -74,6 +76,7 @@ namespace DiscordBot.Modules {
 				Thread.Sleep(300);
 				await DynamicEditMessage(status, e.User, string.Format("Caching of {0} messages is complete! *(took {1:0.00} {2})*", num, span, span == 1d ? "second" : "seconds"));
 				LogHelper.LogSuccess(string.Format("Caching of {0} messages is complete! (took {1:0.00} {2})", num, span, span == 1d ? "second" : "seconds"));
+				return true;
 			}
 		}
 
@@ -81,8 +84,10 @@ namespace DiscordBot.Modules {
 		public sealed class CmdSave : Command<ImageStorage> {
 			public override string name { get; } = "save";
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
+			public override string description { get; } = "Save the most recent attachment from the channel at the bot's main storage. You may specify the filename and folder to store the attachment. Spaces in filenames are forbidden, as well as other odd symbols such as emojis :bowtie:.\nNote: This command does not cache images automatically, so a run of the cache may be required.";
+			public override string usage { get; } = "[filename]";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				// Save latest image in channel
 
 				bool any = false;
@@ -152,7 +157,9 @@ namespace DiscordBot.Modules {
 				} catch (Exception err) {
 					LogHelper.LogException("Unexpected error while performing save of attachment.", err);
 					await DynamicSendMessage(e, "Unexpected error... \n```" + err.Message + "```");
+					throw;
 				}
+				return true;
 			}
 		}
 
@@ -160,11 +167,13 @@ namespace DiscordBot.Modules {
 		public sealed class CmdSend : Command<ImageStorage> {
 			public override string name { get; } = "send";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
+			public override string description { get; } = "Sends an image from the bots local storage.\nNotes:\n- The filter/needles used may only be a partial match, but it will pick one random of all the matches it finds.\n- The algorithm checks if ALL needles match, not just if one matched.\n- If filtered only with an asterisk ( * ) it will randomize between all images stored.";
+			public override string usage { get; } = "<needle> [needle 2] [needle 3] etc.";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {// Error message
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {// Error message
 				if (args.Length < 2) {
 					await DynamicSendMessage(e, "Please specify the file name!\n*Protip: Use the command `list` to get a list of available images.*");
-					return;
+					return false;
 				}
 
 				// Get file path
@@ -176,14 +185,14 @@ namespace DiscordBot.Modules {
 					if (results.Length == 0) {
 						LogHelper.LogFailure("Unable to find user requested file \"" + args[1] + "\"");
 						await DynamicSendMessage(e, "Unable to find a matching file to `" + args[1] + "`\n*Protip: Use the command `list` to get a list of available images.*");
-						return;
+						return false;
 					}
 					file = results[random.Next(results.Length)];
 
 				} catch (Exception err) {
 					LogHelper.LogException("Unexpected error when searching for file.", err);
 					await DynamicSendMessage(e, "Unexpected error while searching for file...\n```" + err.Message + "```");
-					return;
+					throw;
 				}
 
 				// Send file
@@ -198,7 +207,9 @@ namespace DiscordBot.Modules {
 				} catch (Exception err) {
 					LogHelper.LogException("Unexpected error when sending a file.", err);
 					await DynamicSendMessage(e, "Unable to send file `" + Path.GetFileName(args[1]) + "`\n```" + err.Message + "```");
+					throw;
 				}
+				return true;
 			}
 		}
 
@@ -206,11 +217,15 @@ namespace DiscordBot.Modules {
 		public sealed class CmdRefresh : Command<ImageStorage> {
 			public override string name { get; } = "refresh";
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override string description { get; } = "Plain and simple, just refreshes the internal list of images. This is useful if an image was added by 3rd part during runtime.\nNote that the save command refreshes the list automatically.";
+			public override string usage { get; } = "";
+
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				me.image_folder = new Folder(IMAGE_FOLDER_PATH);
 				await e.Channel.SendIsTyping();
 				Thread.Sleep(800);
 				await DynamicSendMessage(e, "Image database has been manually refreshed!");
+				return true;
 			}
 		}
 
@@ -219,8 +234,11 @@ namespace DiscordBot.Modules {
 		public sealed class CmdList : Command<ImageStorage> {
 			public override string name { get; } = "list";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
+			public override string description { get; } = "This sends a list of available images in the bot's local storage to you (in private chat, if possible).";
+			public override string usage { get; } = "";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
+				if (args.Length > 1) return false;
 				try {
 					me.image_folder = me.image_folder ?? new Folder(IMAGE_FOLDER_PATH);
 					string header = "**These images are available**";
@@ -254,7 +272,9 @@ namespace DiscordBot.Modules {
 				} catch (Exception err) {
 					LogHelper.LogException("Unexpected error when sending list.", err);
 					await DynamicSendMessage(e, "Unexpected error occurred when sending list.\n```" + err.Message + "```");
+					throw;
 				}
+				return true;
 			}
 		}
 		#endregion
@@ -338,7 +358,7 @@ namespace DiscordBot.Modules {
 				List<string> results = new List<string>();
 
 				// Main search algorithm
-				if (needles.Length == 1 && needles[0][0] == '?') {
+				if (needles.Length == 1 && needles[0][0] == '*') {
 					// Add everything
 					results.AddRange(files);
 				} else {

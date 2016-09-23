@@ -58,16 +58,17 @@ namespace DiscordBot.Modules {
 		public sealed class CmdAdd : Command<League> {
 			public override string name { get; } = "add";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
+			public override string description { get; } = "Add a player to the list of notifications! Once added the bot will every now and then check their rank to see if they have ranked up, and if so give them a congratulations message.\n**Note:** This binds a discord user to a League of Legends account, but also the channel the command is executed in, for it's that channel that the bot will send the message in.";
+			public override string usage { get; } = "<Discord mention> <LoL IGN>";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
+				// Only command
 				if (args.Length == 1) {
-					await DynamicSendMessage(e, "Missing argument #1; Argument 1 is a discord mention to the connected user.\nMissing argument#2; Arugment 2 is the League Of Legends in-game name");
-					return;
+					return false;
 				}
-
+				// Too few arguments, requires at least 2
 				if (args.Length == 2) {
-					await DynamicSendMessage(e, "Missing argument#2; Arugment 2 is the League Of Legends in-game name");
-					return;
+					return false;
 				}
 
 				ulong user_id;
@@ -78,14 +79,13 @@ namespace DiscordBot.Modules {
 				if (rest.IndexOf(dis) != 0
 				|| string.IsNullOrWhiteSpace(lol)) {
 					// Wrong syntax. Discord user FIRST
-					await DynamicSendMessage(e, "Syntax error;\nArgument 1 is a discord mention to the connected user.\nArugment 2 is the League Of Legends in-game name");
-					return;
+					return false;
 				}
 
 				if (me.players.Values.Any(p => p.discord_user == user_id)) {
 					Player taken = me.players.Values.First(p => p.discord_user == user_id);
 					await DynamicSendMessage(e, "User `" + taken.name + "` is already registered! Please unregister user " + e.Server.GetUser(taken.discord_user).Mention + " first, then try again.");
-					return;
+					return false;
 				}
 
 				LogHelper.LogInformation("Adding player '" + lol + "' to account @" + user.Name + "#" + user.Discriminator + ", validating using Riots API...");
@@ -111,7 +111,9 @@ namespace DiscordBot.Modules {
 
 					LogHelper.LogException("Unexpected error when fetching player!", err);
 					await DynamicEditMessage(status, e.User, "Unexpected error when adding player `" + lol + "`\n```" + err.Message + "```");
+					throw;
 				}
+				return true;
 			}
 		}
 
@@ -119,11 +121,12 @@ namespace DiscordBot.Modules {
 		public sealed class CmdDel : Command<League> {
 			public override string name { get; } = "del";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
+			public override string description { get; } = "Opposite of add. Removes a player from the watch list.";
+			public override string usage { get; } = "<Discord mention>";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length == 1) {
-					await DynamicSendMessage(e, "Missing argument #1;\nArgument 1 is a discord mention to the connected user.");
-					return;
+					return false;
 				}
 
 				rest = rest.Trim();
@@ -131,8 +134,7 @@ namespace DiscordBot.Modules {
 				ulong user;
 				string dis = e.Server.Users.GetFirstMentionInString(rest, out user);
 				if (string.IsNullOrWhiteSpace(dis) || rest.IndexOf(dis) != 0) {
-					await DynamicSendMessage(e, "Syntax error;\nArgument 1 is a discord mention to the connected user.");
-					return;
+					return false;
 				}
 
 				try {
@@ -145,7 +147,9 @@ namespace DiscordBot.Modules {
 				} catch (Exception err) {
 					LogHelper.LogException("Unexpected error when unregistering player!", err);
 					await DynamicSendMessage(e, "Unexpected error when unregistering user " + dis + "\n```" + err.Message + "```");
+					throw;
 				}
+				return true;
 			}
 		}
 
@@ -153,8 +157,10 @@ namespace DiscordBot.Modules {
 		public sealed class CmdRefresh : Command<League> {
 			public override string name { get; } = "refresh";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
+			public override string description { get; } = "Does a manual check for all added users.";
+			public override string usage { get; } = "";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				Message status = await DynamicSendMessage(e, "Refreshing all users...");
 
 				LogHelper.LogInformation("Refreshing league player data...");
@@ -168,9 +174,12 @@ namespace DiscordBot.Modules {
 
 						LogHelper.LogSuccess("'" + p.name + "' has been refreshed.");
 						count++;
+
+						await Task.Delay(1000);
 					} catch (Exception err) {
 						bugs += "\nError while loading stats for `" + p.name + "` (" + e.Server.GetUser(p.discord_user) + ")\n```" + err.Message + "```\n";
 						LogHelper.LogException("Unexpected exception while fetching LoL player data!", err);
+						throw;
 					}
 				}
 
@@ -179,6 +188,7 @@ namespace DiscordBot.Modules {
 				} else {
 					await DynamicEditMessage(status, e.User, string.Format("Reloaded {0}/{1} profiles successfully.\n", count, me.players.Count) + bugs);
 				}
+				return true;
 			}
 		}
 
@@ -186,8 +196,10 @@ namespace DiscordBot.Modules {
 		public sealed class CmdList : Command<League> {
 			public override string name { get; } = "list";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
+			public override string description { get; } = "Sends a list of added players. Shows their IGN, Discord mention, and their LoL rank.";
+			public override string usage { get; } = "";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (me.players.Count == 0) {
 					await DynamicSendMessage(e, "**No users are added.**");
 				} else {
@@ -200,6 +212,7 @@ namespace DiscordBot.Modules {
 						  )).TrimEnd('\n')
 						);
 				}
+				return true;
 			}
 		}
 		#endregion
@@ -240,7 +253,20 @@ namespace DiscordBot.Modules {
 						Player player = stack.Pop();
 						if (player.dead) continue;
 
-						await player.CheckRank(this);
+						try {
+							// Fetch rank
+							bool levelup = await player.CheckRank(this);
+
+							if (levelup)
+								LogHelper.LogSuccess("'" + player.name + "' gained a rank! (via automatic update).");
+						} catch (WebRequestHelper.MyHttpWebException) {
+							//bugs += "\nError while loading stats for `" + p.name + "` (" + e.Server.GetUser(p.discord_user) + ")\n```" + err.Message + "```\n";
+							LogHelper.LogWarning(string.Format("Error while trying to automatically check player rank for '{0}'. Will retry in {1} minutes",
+								player?.name == null ? "null" : player.name,
+								players.Count * 5));
+						} catch (Exception err) {
+							LogHelper.LogException("Unexpected exception while fetching LoL player data!", err);
+						}
 						break;
 					}
 				}
@@ -311,13 +337,37 @@ namespace DiscordBot.Modules {
 			}
 
 			public static async Task<Player> FetchFromID(long id) {
-				HttpWebRequest request = WebRequest.CreateHttp(URLGetSummonerById(id));
-				return JsonConvert.DeserializeObject<Dictionary<string, Player>>(await request.GetHTMLContent()).First().Value;
+				int tries = 3;
+			Retry:
+				try {
+					HttpWebRequest request = WebRequest.CreateHttp(URLGetSummonerById(id));
+					return JsonConvert.DeserializeObject<Dictionary<string, Player>>(await request.GetHTMLContent()).First().Value;
+				} catch (WebRequestHelper.MyHttpWebException err) {
+					if (err.StatusCode == HttpStatusCode.InternalServerError && tries > 0) {
+						tries--;
+						LogHelper.LogWarning("Internal server error on fetching player from ID! Retrying...");
+						await Task.Delay(1000);
+						goto Retry;
+					}
+					throw;
+				}
 			}
 
 			public static async Task<Player> FetchFromName(string name) {
-				HttpWebRequest request = WebRequest.CreateHttp(URLGetSummonerByName(name));
-				return JsonConvert.DeserializeObject<Dictionary<string, Player>>(await request.GetHTMLContent()).First().Value;
+				int tries = 3;
+			Retry:
+				try {
+					HttpWebRequest request = WebRequest.CreateHttp(URLGetSummonerByName(name));
+					return JsonConvert.DeserializeObject<Dictionary<string, Player>>(await request.GetHTMLContent()).First().Value;
+				} catch (WebRequestHelper.MyHttpWebException err) {
+					if (err.StatusCode == HttpStatusCode.InternalServerError && tries > 0) {
+						tries--;
+						LogHelper.LogWarning("Internal server error on fetching player from name! Retrying...");
+						await Task.Delay(1000);
+						goto Retry;
+					}
+					throw;
+				}
 			}
 		}
 
@@ -360,10 +410,18 @@ namespace DiscordBot.Modules {
 			}
 
 			public static async Task<Rank> FetchFromID(long id) {
-				HttpWebRequest request = WebRequest.CreateHttp(URLGetLeagueEntriesBySummonerId(id));
+				int tries = 3;
+			Retry:
 				try {
+					HttpWebRequest request = WebRequest.CreateHttp(URLGetLeagueEntriesBySummonerId(id));
 					return JsonConvert.DeserializeObject<Dictionary<string, List<Rank>>>(await request.GetHTMLContent()).Values.First().First(r => r.queue == "RANKED_SOLO_5x5");
 				} catch (WebRequestHelper.MyHttpWebException err) {
+					if (err.StatusCode == HttpStatusCode.InternalServerError && tries > 0) {
+						tries--;
+						LogHelper.LogWarning("Internal server error on fetching rank from ID! Retrying...");
+						await Task.Delay(1000);
+						goto Retry;
+					}
 					if (err.StatusCode == HttpStatusCode.NotFound)
 						return new Rank { tier = "UNRANKED", entries = new Entries[] { new Entries { division = "UNRANKED" } } };
 					else throw;

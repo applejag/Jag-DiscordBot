@@ -33,8 +33,12 @@ namespace DiscordBot.Modules {
 		public sealed class CmdLua : Command<LuaEval> {
 			public override string name { get; } = "lua";
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
+			public override string description { get; } = "Interprets Lua code and executes it. The message for itself is accessable via e.Message";
+			public override string usage { get; } = "<Lua>";
 
-			public override async Task Callback(MessageEventArgs e, string[] args, string rest) {
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
+				if (args.Length == 1) return false;
+
 				Message status = null;
 				try {
 					status = await e.Channel.SafeSendMessage("**Executing code...**");
@@ -59,8 +63,10 @@ namespace DiscordBot.Modules {
 						await status.SafeEdit("**Error!**\n```\n" + err.Message + "```");
 					else
 						await e.Channel.SafeSendMessage("**Error!**\n```\n" + err.Message + "```");
+					throw;
 				}
 				me.token = null;
+				return true;
 			}
 		}
 		
