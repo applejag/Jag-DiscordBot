@@ -119,10 +119,11 @@ namespace DiscordBot.Modules {
 
 		private CmdDel cmdDel = new CmdDel();
 		public sealed class CmdDel : Command<League> {
-			public override string name { get; } = "del";
+			public override string name { get; } = "delete";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
 			public override string description { get; } = "Opposite of add. Removes a player from the watch list.";
 			public override string usage { get; } = "<Discord mention>";
+			public override string[] alias { get; internal set; } = { "del", "remove" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length == 1) {
@@ -159,6 +160,7 @@ namespace DiscordBot.Modules {
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
 			public override string description { get; } = "Does a manual check for all added users.";
 			public override string usage { get; } = "";
+			public override string[] alias { get; internal set; } = { "update", "check" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				Message status = await DynamicSendMessage(e, "Refreshing all users...");
@@ -204,7 +206,7 @@ namespace DiscordBot.Modules {
 					await DynamicSendMessage(e, "**No users are added.**");
 				} else {
 					await DynamicSendMessage(e, "**Users that's logged** *(" + me.players.Count + " players)*\n"
-						+ me.players.Values.ToString(p => string.Format("- **{0}** *(tagged to {1})*  League {2}{3}\n",
+						+ me.players.Values.Sum(p => string.Format("- **{0}** *(tagged to {1})*  League {2}{3}\n",
 							  p.name,
 							  bot.client.GetServer(p.discord_server)?.GetChannel(p.discord_channel)?.GetUser(p.discord_user)?.Mention ?? "null",
 							  p.rank.ToString(),
@@ -372,7 +374,7 @@ namespace DiscordBot.Modules {
 		}
 
 		[Serializable]
-		public struct Rank {
+		public class Rank {
 
 			public string division { get {
 					return entries != null && entries.Length > 0 ? entries[0].division : string.Empty;
@@ -414,7 +416,7 @@ namespace DiscordBot.Modules {
 			Retry:
 				try {
 					HttpWebRequest request = WebRequest.CreateHttp(URLGetLeagueEntriesBySummonerId(id));
-					return JsonConvert.DeserializeObject<Dictionary<string, List<Rank>>>(await request.GetHTMLContent()).Values.First().First(r => r.queue == "RANKED_SOLO_5x5");
+					return JsonConvert.DeserializeObject<Dictionary<string, List<Rank>>>(await request.GetHTMLContent()).Values?.First().First(r => r?.queue == "RANKED_SOLO_5x5");
 				} catch (WebRequestHelper.MyHttpWebException err) {
 					if (err.StatusCode == HttpStatusCode.InternalServerError && tries > 0) {
 						tries--;

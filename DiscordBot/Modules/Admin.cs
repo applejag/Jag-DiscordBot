@@ -39,27 +39,36 @@ namespace DiscordBot.Modules {
 			public override bool useModulePrefix { get; } = false;
 			public override string description { get; } = "Removes the most recent message, or the most X recent messages, where X is the argument you supply. The count is excluding the command message itself.";
 			public override string usage { get; } = "[count]";
+			public override string[] alias { get; internal set; } = { "c" };
 
 			private static List<ulong> tasks = new List<ulong>();
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length > 2) return false;
 				// Only run if the other is not. So not multiple bots try to remove the same message
 
-				// Only run selfbot in private channels
-				if (!bot.isSelfbot && e.Channel.IsPrivate) return false;
+				// Check if it's already being handled
+				if (tasks.Contains(e.Message.Id)) return true;
+
 				// Check if non-private channel
 				if (bot.isSelfbot && !e.Channel.IsPrivate) {
 					// Check if there is any non-selfbots in this channel
 					if (Program.bots.Any(b => b != bot && !b.isSelfbot && e.Channel.Users.Any(u => u.Id == b.client.CurrentUser.Id))) {
-						return false;
+						// Return true 'cause we dont want the usage to show
+						return true;
 					}
+				}
+				// Only run selfbot in private channels
+				if (!bot.isSelfbot && e.Channel.IsPrivate) {
+					// Check if there is any selfbots in this channel
+					if (Program.bots.Any(b => b != bot && b.isSelfbot && e.Channel.Users.Any(u => u.Id == b.client.CurrentUser.Id))) {
+						// Return true 'cause we dont want the usage to show
+						return true;
+					} else
+						return false;
 				}
 				// First-one-to-the-boat for the non-selfbots
 				if (!bot.isSelfbot && !e.Channel.IsPrivate) {
-					if (!tasks.Contains(e.Message.Id))
-						tasks.Add(e.Message.Id);
-					else
-						return false;
+					tasks.Add(e.Message.Id);
 				}
 
 				// Start clearin
@@ -148,25 +157,28 @@ namespace DiscordBot.Modules {
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length > 1) return false;
 
-				Message status = await DynamicSendMessage(e, "Calculating stats...");
+				Message status = await DynamicSendMessage(e, "`" + e.Message.RawText + "`\n*Calculating stats...*");
 				await e.Channel.SendIsTyping();
 
 				float cpuUsage = ComputerHelper.GetCPUUsage();
 				long allocatedMemory = ComputerHelper.GetAllocatedMemory();
 				long freeMemory = ComputerHelper.GetAvailableMemory();
 
-				await status.SafeEdit("**Status for bot running " + bot.client.CurrentUser.Mention + "**\n```\n"
+				await status.SafeEdit("`" + e.Message.RawText + "`\n**Status for bot running " + bot.client.CurrentUser.Mention + "**\n```\n"
 					+ "Online since: " + bot.activeSince.ToString("yyyy-MM-dd HH:mm:ss") + "\n"
 					+ "Online for: " + StringHelper.FormatTimespan(DateTime.Now - bot.activeSince) + "\n"
 					+ string.Format("CPU usage: {0:n2} %", cpuUsage) + "\n"
 					+ string.Format("Used Memory: {0} ({1} B)", StringHelper.FormatBytes(allocatedMemory), StringHelper.FormatThousands(allocatedMemory)) + "\n"
 					+ string.Format("Unallocated Memory: {0} ({1} B)", StringHelper.FormatBytes(freeMemory), StringHelper.FormatThousands(freeMemory)) + "\n"
-					+ Program.bots.ToString(b => 
-						"[Bot] " + b.client.CurrentUser.Mention + "\n"
+					+ Program.bots.Sum(b =>
+						"\n[Bot] " + b.client.CurrentUser.Name + "\n"
 						+ "- Modules active: " + b.modules.Count + "\n"
-						+ (b.modules.Count > 0 ? b.modules.ToString(mod => ", " + mod.GetType().Name).TrimStart(',', ' ') + "\n" : string.Empty)
+						+ (b.modules.Count > 0 ? b.modules.Sum(mod => ", " + mod.GetType().Name).TrimStart(',', ' ') + "\n" : string.Empty)
 						+ "- Commands active: " + b.commands.Count + "\n"
-						+ (b.commands.Count > 0 ? b.commands.ToString(cmd => ", " + cmd.id).TrimStart(',', ' ') + "\n" : string.Empty)
+						+ (b.commands.Count > 0 ? b.commands.Sum(cmd => ", " + cmd.id).TrimStart(',', ' ') + "\n" : string.Empty)
+						+ "- Servers active: " + b.client.Servers.Count() + "\n"
+						+ "- Users: " + b.client.Servers.Sum(s => s.Users.Count(u => u.Status == UserStatus.Online))
+						+ " online out of " + b.client.Servers.Sum(s => s.Users.Count()) + " users\n"
 						)
 					+ "```" );
 

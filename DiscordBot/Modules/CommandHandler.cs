@@ -39,18 +39,19 @@ namespace DiscordBot.Modules {
 				string[] args; string rest;
 				Command cmd = TryParseCommand(m, e.Message.Text, permissions, out args, out rest);
 				if (cmd != null) {
-					if (rest.Trim() == "?" || rest.Trim() == "-h") {
-						await DiscordHelper.DynamicSendMessage(e, cmd.GetInformation());
+					string trimmed = rest.Trim();
+					if (trimmed == "?" || trimmed == "-h" || trimmed == "--help") {
+						await DiscordHelper.DynamicSendMessage(e, "`" + e.Message.RawText + "`\n" + cmd.GetInformation());
 						return;
 					}
 
 					try {
 						LogHelper.LogInformation("Command \"" + cmd.name + "\" ran by " + e.User.Name + "#" + e.User.Discriminator);
 						if (!await cmd.Callback(e, args, rest))
-							await DiscordHelper.DynamicSendMessage(e, cmd.GetInformation());
+							await DiscordHelper.DynamicSendMessage(e, "`" + e.Message.RawText + "`\n" + cmd.GetInformation());
 					} catch (Exception err) {
 						LogHelper.LogException("Error executing command \"" + cmd.name + "\"", err);
-						await DiscordHelper.DynamicSendMessage(e, "Error executing command!\n```" + err.Message + "```");
+						await e.Channel.SafeSendMessage("Error executing command!\n```" + err.Message + "```");
 					}
 					return;
 				}
@@ -100,7 +101,9 @@ namespace DiscordBot.Modules {
 				}
 
 				// Check command
-				if (args[j].ToLower() != cmd.name.ToLower()) continue;
+				string cmdName = args[j].ToLower();
+				if (cmdName != cmd.name
+					&& !cmd.alias.Contains(cmdName)) continue;
 
 				// Check permissions
 				if (cmd.requires == CommandPerm.Whitelist && permissions == CommandPerm.None) continue;

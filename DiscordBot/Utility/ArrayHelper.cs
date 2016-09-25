@@ -30,11 +30,10 @@ namespace DiscordBot.Utility {
 			return result;
 		}
 
-		public static string ToString<T>(this IEnumerable<T> list, Func<T,string> each) {
+		public static string Sum<T>(this IEnumerable<T> list, Func<T,string> selector) {
 			string txt = string.Empty;
-			foreach (T item in list) {
-				txt += each(item);
-			}
+			foreach (T item in list)
+				txt += selector(item);
 			return txt;
 		}
 
@@ -46,5 +45,6 @@ namespace DiscordBot.Utility {
 				return kill.Length;
 			} else return 0;
 		}
+		
 	}
 }

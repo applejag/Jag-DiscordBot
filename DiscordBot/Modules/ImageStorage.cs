@@ -14,7 +14,6 @@ namespace DiscordBot.Modules {
 	public sealed class ImageStorage : Module {
 		static readonly string IMAGE_FOLDER_PATH = Path.Combine(Environment.CurrentDirectory, "images"); // Relative
 		Folder image_folder;
-		static Random random = new Random();
 
 		public override string modulePrefix { get; } = "img";
 
@@ -43,6 +42,7 @@ namespace DiscordBot.Modules {
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
 			public override string description { get; } = "Since the bot does not download /everything/ some manual caching is sometimes needed. All this does is giving the bot a heads up that it may have missed some messages. Espesually useful for the `save` command who doesn't cache automatically.";
 			public override string usage { get; } = "";
+			public override string[] alias { get; internal set; } = { "load" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				int num = 100;
@@ -86,6 +86,7 @@ namespace DiscordBot.Modules {
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
 			public override string description { get; } = "Save the most recent attachment from the channel at the bot's main storage. You may specify the filename and folder to store the attachment. Spaces in filenames are forbidden, as well as other odd symbols such as emojis :bowtie:.\nNote: This command does not cache images automatically, so a run of the cache may be required.";
 			public override string usage { get; } = "[filename]";
+			public override string[] alias { get; internal set; } = { "get", "add" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				// Save latest image in channel
@@ -95,7 +96,10 @@ namespace DiscordBot.Modules {
 				Message status = await DynamicSendMessage(e, "Seaching for attachment...");
 
 				try {
-					foreach (var msg in e.Channel.Messages) {
+					List<Message> messages = new List<Message>(e.Channel.Messages);
+					messages.Sort((a, b) => b.Timestamp.CompareTo(a.Timestamp));
+
+					foreach (var msg in messages) {
 						if (msg.Attachments == null || msg.Attachments.Length == 0) continue;
 						Attachment a = msg.Attachments[0];
 						any = true;
@@ -187,7 +191,7 @@ namespace DiscordBot.Modules {
 						await DynamicSendMessage(e, "Unable to find a matching file to `" + args[1] + "`\n*Protip: Use the command `list` to get a list of available images.*");
 						return false;
 					}
-					file = results[random.Next(results.Length)];
+					file = results[RandomHelper.random.Next(results.Length)];
 
 				} catch (Exception err) {
 					LogHelper.LogException("Unexpected error when searching for file.", err);
@@ -219,6 +223,7 @@ namespace DiscordBot.Modules {
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
 			public override string description { get; } = "Plain and simple, just refreshes the internal list of images. This is useful if an image was added by 3rd part during runtime.\nNote that the save command refreshes the list automatically.";
 			public override string usage { get; } = "";
+			public override string[] alias { get; internal set; } = { "update" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				me.image_folder = new Folder(IMAGE_FOLDER_PATH);

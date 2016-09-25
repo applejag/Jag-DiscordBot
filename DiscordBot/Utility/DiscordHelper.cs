@@ -12,9 +12,9 @@ using System.Threading.Tasks;
 
 namespace DiscordBot.Utility {
 	public static class DiscordHelper {
-
-		public const int MESSAGE_TIMEOUT = 5000; // 5 sec
-		public const int MESSAGE_CHECK_DELAY = 250; // 1/4 sec
+		
+		public const int MESSAGE_CHECK_LOOP_DELAY = 250; // 1/4 sec
+		public const int MESSAGE_LENGTH_LIMIT = 2000;
 
 		/// <summary>
 		/// Finds the first valid mention of someone in a list of users within a string.
@@ -66,47 +66,88 @@ namespace DiscordBot.Utility {
 			return mention;
 		}
 
+		/// <summary>
+		/// Sends a private message to <paramref name="user"/> and waits until it's no longer queued.
+		/// </summary>
 		public static async Task<Message> SafeSendMessage(this User user, string text) {
+			if (user?.PrivateChannel == null)
+				throw new ArgumentNullException("user");
+			if (string.IsNullOrWhiteSpace(text))
+				throw new ArgumentException("Invalid text");
+			if (text.Length > MESSAGE_LENGTH_LIMIT)
+				throw new ArgumentException("Message text is too long! Message had " + text.Length + " characters while maximum is " + MESSAGE_LENGTH_LIMIT, "text");
+
 			Message msg = await user.PrivateChannel.SendMessage(text);
-			try {
-				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () => msg.State != MessageState.Queued);
-			} catch {
-				throw new TimeoutException("Timeout while waiting for message to be sent.");
-			}
+			await TaskHelper.WaitUntil(MESSAGE_CHECK_LOOP_DELAY, () => msg.State != MessageState.Queued);
 			return msg;
 		}
 
+		/// <summary>
+		/// Sends a text message to <paramref name="channel"/> and waits until it's no longer queued.
+		/// </summary>
 		public static async Task<Message> SafeSendMessage(this Channel channel, string text) {
+			if (channel == null)
+				throw new ArgumentNullException("channel");
+			if (string.IsNullOrWhiteSpace(text))
+				throw new ArgumentException("Invalid text");
+			if (text.Length > MESSAGE_LENGTH_LIMIT)
+				throw new ArgumentException("Message text is too long! Message had " + text.Length + " characters while maximum is " + MESSAGE_LENGTH_LIMIT, "text");
+
 			Message msg = await channel.SendMessage(text);
-			try {
-				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () => msg.State != MessageState.Queued);
-			} catch {
-				throw new TimeoutException("Timeout while waiting for message to be sent.");
-			}
+			await TaskHelper.WaitUntil(MESSAGE_CHECK_LOOP_DELAY, () => msg.State != MessageState.Queued);
 			return msg;
 		}
 
+		/// <summary>
+		/// Sends a file from <paramref name="filePath"/> and waits until it's no longer queued.
+		/// </summary>
 		public static async Task<Message> SafeSendFile(this Channel channel, string filePath) {
+			if (channel == null)
+				throw new ArgumentNullException("channel");
+			if (string.IsNullOrWhiteSpace(filePath))
+				throw new ArgumentNullException("filePath");
+			if (!File.Exists(filePath))
+				throw new FileNotFoundException("Attachment file not found!", filePath);
+
 			Message msg = await channel.SendFile(filePath);
-			try {
-				await TaskHelper.WaitUntil(MESSAGE_CHECK_DELAY, MESSAGE_TIMEOUT, () => msg.State != MessageState.Queued);
-			} catch {
-				throw new TimeoutException("Timeout while waiting for file to be sent.");
-			}
+			await TaskHelper.WaitUntil(MESSAGE_CHECK_LOOP_DELAY, () => msg.State != MessageState.Queued);
 			return msg;
 		}
 
+		/// <summary>
+		/// Sometimes the message object you edit dont always update. This makes sure to return the updated message.
+		/// </summary>
 		public static async Task<Message> SafeEdit(this Message message, string newText) {
+			if (message == null)
+				throw new ArgumentNullException("message");
+			if (string.IsNullOrWhiteSpace(newText))
+				throw new ArgumentException("Invalid text");
+			if (newText.Length > MESSAGE_LENGTH_LIMIT)
+				throw new ArgumentException("Message text is too long! Message had " + newText.Length + " characters while maximum is " + MESSAGE_LENGTH_LIMIT, "text");
+
 			await message.Edit(newText);
 			return message.Channel.GetMessage(message.Id);
 		}
 
+		/// <summary>
+		/// <para>This is here in case the Discord.Net library changes so it doesn't get fully deleted.</para>
+		/// <para>It's identical to the original for now.</para>
+		/// </summary>
 		public static async Task<Message> SafeDelete(this Message message) {
+			if (message == null)
+				throw new ArgumentNullException("message");
+
 			await message.Delete();
 			return message;
 		}
 
+		/// <summary>
+		/// Dynamically checks if the reply to the <see cref="MessageEventArgs"/> needs to include a mention, based of if it's a selfbot and private or public channel.
+		/// </summary>
 		public static async Task<Message> DynamicSendMessage(MessageEventArgs e, string text) {
+			if (e?.Message == null || e?.Channel == null)
+				throw new ArgumentNullException("e");
+
 			if (e.Message.IsAuthor) {
 				// Dont need to mention myself
 				return await e.Message.SafeEdit(text);
@@ -121,7 +162,13 @@ namespace DiscordBot.Utility {
 			}
 		}
 
+		/// <summary>
+		/// Similar to the <see cref="DynamicSendMessage(MessageEventArgs, string)"/>, where it checks if the message needs to include a mention.
+		/// </summary>
 		public static async Task<Message> DynamicEditMessage(Message message, string newText, bool isMe) {
+			if (message == null)
+				throw new ArgumentNullException("message");
+
 			if (isMe) {
 				// Dont need to mention myself
 				return await message.SafeEdit(newText);
@@ -141,6 +188,11 @@ namespace DiscordBot.Utility {
 		/// <param name="channel">The channel the file will be sent to</param>
 		/// <param name="url">The url to download the file from</param>
 		public static async Task<Message> SendFileFromWeb(this Channel channel, string url) {
+			if (channel == null)
+				throw new ArgumentNullException("channel");
+			if (string.IsNullOrWhiteSpace(url))
+				throw new ArgumentNullException("url");
+
 			using (var client = new WebClient()) {
 				LogHelper.LogInformation("Started downloading file from \"" + url + "\"");
 
@@ -170,13 +222,17 @@ namespace DiscordBot.Utility {
 			}
 		}
 
-
 		/// <summary>
 		/// Saves <paramref name="image"/> to a temporary location, sends it, then deletes it.
 		/// </summary>
 		/// <param name="channel">The channel the file will be sent to</param>
 		/// <param name="image">The image to be sent</param>
 		public static async Task<Message> SendImage(this Channel channel, Image image) {
+			if (channel == null)
+				throw new ArgumentNullException("channel");
+			if (image == null)
+				throw new ArgumentNullException("image");
+
 			using (var client = new WebClient()) {
 				LogHelper.LogInformation("Sending raw image...");
 

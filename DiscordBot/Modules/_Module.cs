@@ -22,8 +22,10 @@ namespace DiscordBot.Modules {
 			if (cmd.requires == CommandPerm.Selfbot && !bot.isSelfbot) return;
 
 			cmd.bot = bot;
-			cmd.me = (T)this;
-			
+			cmd.module = this;
+			cmd.id = cmd.name == null ? null : (string.IsNullOrWhiteSpace(modulePrefix) ? "" : modulePrefix + ".") + cmd.name;
+			Array.Sort(cmd.alias);
+
 			if (bot.commands.Any(c=>c.id == cmd.id || c.module.modulePrefix == cmd.id))
 				LogHelper.LogFailure("Command \"" + cmd.id + "\" is conflicting with another command! Skipping...");
 			else {
