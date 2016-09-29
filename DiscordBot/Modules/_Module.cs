@@ -13,6 +13,25 @@ namespace DiscordBot.Modules {
 		public Bot bot { get; internal set; }
 		public DiscordClient client { get { return bot == null ? null : bot.client; } }
 		public virtual string modulePrefix { get { return null; } }
+		public virtual string description { get { return null; } }
+		public string GetInformation() {
+			if (string.IsNullOrWhiteSpace(modulePrefix)) return null;
+
+			Command[] commands = GetCommands();
+			string o = string.Empty;
+			
+			o += "**" + this.GetType().Name + " / " + modulePrefix + "**";
+			if (!string.IsNullOrWhiteSpace(description))
+				o += "\n**Description**:\n```\n" + description + "```\n";
+			if (commands.Length > 0) {
+				o += "\n**" + commands.Length + " available " + (commands.Length == 1 ? "command" : "commands") + ":**\n";
+				Array.Sort(commands, (a,b) => a.id.CompareTo(b.id));
+				o += "```\n" + commands.Sum(c =>
+					c.fullUsage + "\n").Trim() + "```";
+			}
+
+			return o;
+		}
 
 		public abstract void Init();
 		public abstract void Unload();

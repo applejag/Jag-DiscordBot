@@ -14,7 +14,9 @@ namespace DiscordBot {
 		internal readonly static string[] whitelist = {
 			"applejag#6330",
 			"Love Yaa#9105",
-			"Slamakans#7788"
+			//"Slamakans#7788",
+			"Ralev#6393",
+			"Kalleballe#9565"
 		};
 
 		private readonly string token;
@@ -90,8 +92,8 @@ namespace DiscordBot {
 				// Bot acc-only modules
 				modules.Add(new League());
 				modules.Add(new Admin("bot"));
-
-				
+				modules.Add(new DuckHorn());
+				modules.Add(new MusicBot());
 			}
 			#endregion
 

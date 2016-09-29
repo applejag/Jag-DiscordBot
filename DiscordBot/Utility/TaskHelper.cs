@@ -13,16 +13,17 @@ namespace DiscordBot.Utility {
 				await Task.Delay(checkDelay);
 			}
 		}
-		public static async Task WaitUntil(int checkDelay, int timeout, Func<bool> check) {
+		public static async Task<bool> WaitUntil(int checkDelay, int timeout, Func<bool> check) {
 			CancellationTokenSource source = new CancellationTokenSource(timeout);
 
 			while (!check()) {
 				try {
 					await Task.Delay(checkDelay, source.Token);
 				} catch {
-					throw new TimeoutException("Timeout while waiting for task");
+					return false;
 				}
 			}
+			return false;
 		}
 
 	}

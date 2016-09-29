@@ -54,6 +54,7 @@ namespace DiscordBot {
 			SaveData.Load();
 
 			string[] tokens = UserInterface.AskForTokens();
+			UserInterface.AskForYoutubeKey();
 			bots = new Bot[tokens.Length];
 
 			for (int i=0; i<tokens.Length; i++) {

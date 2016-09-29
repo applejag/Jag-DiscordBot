@@ -2,6 +2,7 @@
 using DiscordBot.Utility;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -19,6 +20,10 @@ namespace DiscordBot {
 
 		#region SERIALIZABLE DATA
 		public League.Player[] League_players;
+
+		[DefaultValue(1)]
+		public float Music_volume;
+		public string Youtube_Key;
 
 		public string[] Bot_tokens;
 		#endregion

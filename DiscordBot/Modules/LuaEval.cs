@@ -13,6 +13,7 @@ namespace DiscordBot.Modules {
 	public class LuaEval : Module {
 		public Script script;
 		internal CancellationTokenSource token = null;
+		public override string modulePrefix { get; } = "lua";
 
 		public override void Init() {
 			script = new Script(CoreModules.Preset_SoftSandbox);
@@ -22,11 +23,55 @@ namespace DiscordBot.Modules {
 			UserData.RegisterProxyType<LuaInterface.ServerProxy, Server>(s => new LuaInterface.ServerProxy(s));
 			UserData.RegisterProxyType<LuaInterface, MessageEventArgs>(e => new LuaInterface(this, e));
 
+			AddCommand(cmdEnable);
+			AddCommand(cmdDisable);
 			AddCommand(cmdLua);
 		}
 
 		public override void Unload() {
+			RemoveCommand(cmdEnable);
+			RemoveCommand(cmdDisable);
 			RemoveCommand(cmdLua);
+
+			token?.Cancel();
+		}
+
+		#region Command declarations
+		private CmdEnable cmdEnable = new CmdEnable();
+		public sealed class CmdEnable : Command<LuaEval> {
+			public override string name { get; } = "enable";
+			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
+			public override string description => "Re-enables the lua interperator.\nThis is enabled by default but can be disabled via\n\t" + me.cmdDisable.fullUsage;
+			public override string usage { get; } = "";
+
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
+				if (!me.GetCommands().Contains(me.cmdLua)) {
+					me.AddCommand(me.cmdLua);
+					await DynamicSendMessage(e, ":crescent_moon: **Lua interperator has been enabled!**");
+				} else
+					await DynamicSendMessage(e, ":crescent_moon: *Lua interperator is already enabled!*");
+
+				return true;
+			}
+		}
+
+
+		private CmdDisable cmdDisable = new CmdDisable();
+		public sealed class CmdDisable : Command<LuaEval> {
+			public override string name { get; } = "disable";
+			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
+			public override string description => "Disables the lua interperator.\nIf disabled, the interperator can be reenabled via\n\t" + me.cmdEnable.fullUsage;
+			public override string usage { get; } = "";
+
+			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
+				if (me.GetCommands().Contains(me.cmdLua)) {
+					me.RemoveCommand(me.cmdLua);
+					await DynamicSendMessage(e, ":crescent_moon: **Lua interperator has been disabled!**");
+				} else
+					await DynamicSendMessage(e, ":crescent_moon: *Lua interperator is already disabled!*");
+
+				return true;
+			}
 		}
 
 		private CmdLua cmdLua = new CmdLua();
@@ -34,14 +79,15 @@ namespace DiscordBot.Modules {
 			public override string name { get; } = "lua";
 			public override CommandPerm requires { get; } = CommandPerm.Selfbot;
 			public override string description { get; } = "Interprets Lua code and executes it. The message for itself is accessable via e.Message";
-			public override string usage { get; } = "<Lua>";
+			public override string usage { get; } = "<Lua code>";
+			public override bool useModulePrefix { get; } = false;
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length == 1) return false;
 
 				Message status = null;
 				try {
-					status = await e.Channel.SafeSendMessage("**Executing code...**");
+					status = await e.Channel.SafeSendMessage(":crescent_moon: **Executing code...**");
 
 					if (me.token != null) {
 						me.token.Cancel();
@@ -53,23 +99,24 @@ namespace DiscordBot.Modules {
 						DynValue response = await (await me.script.LoadStringAsync(rest)).Function.CallAsync();
 						
 						if (response == null || response.IsVoid())
-							await DynamicEditMessage(status, e.User, "**Done!**");
+							await DynamicEditMessage(status, e.User, ":crescent_moon: **Done!**");
 						else
-							await DynamicEditMessage(status, e.User, "**Done!** Output:\n```fix\n" + response.ToString() + "```");
+							await DynamicEditMessage(status, e.User, ":crescent_moon: **Done!** Output:\n```fix\n" + response.ToString() + "```");
 					}
  				} catch (Exception err) {
 					LogHelper.LogException("Error while executing Lua!", err);
 					if (status != null)
-						await status.SafeEdit("**Error!**\n```\n" + err.Message + "```");
+						await status.SafeEdit(":crescent_moon: **Error!**\n```\n" + err.Message + "```");
 					else
-						await e.Channel.SafeSendMessage("**Error!**\n```\n" + err.Message + "```");
+						await e.Channel.SafeSendMessage(":crescent_moon: **Error!**\n```\n" + err.Message + "```");
 					throw;
 				}
 				me.token = null;
 				return true;
 			}
 		}
-		
+		#endregion
+
 		public class LuaInterface : IDisposable {
 
 			private Script script;
@@ -98,7 +145,10 @@ namespace DiscordBot.Modules {
 			}
 
 			public void print(DynValue text) {
-				stack.Add(text.ToString());
+				if (text.Type == DataType.String)
+					stack.Add(text.String);
+				else
+					stack.Add(text.ToString());
 			}
 
 			public void sleep(DynValue time) {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace DiscordBot.Utility {
@@ -156,6 +157,17 @@ namespace DiscordBot.Utility {
 				messages.Add(current);
 
 			return messages.ToArray();
+		}
+
+		private static readonly Regex _uriQueryRegex = new Regex(@"[?|&]([\w\.]+)=([^?|^&]+)");
+		public static IReadOnlyDictionary<string, string> ParseQuery(this Uri uri) {
+			var match = _uriQueryRegex.Match(uri.PathAndQuery);
+			var paramaters = new Dictionary<string, string>();
+			while (match.Success) {
+				paramaters.Add(match.Groups[1].Value, match.Groups[2].Value);
+				match = match.NextMatch();
+			}
+			return paramaters;
 		}
 	}
 }

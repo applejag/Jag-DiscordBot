@@ -64,6 +64,20 @@ namespace DiscordBot.Utility {
 		}
 
 		/// <summary>
+		/// Makes a Http call towards <paramref name="url"/> and returns the response code.
+		/// </summary>
+		/// <exception cref="NotSupportedException"></exception>
+		/// <exception cref="ArgumentNullException"></exception>
+		/// <exception cref="System.Security.SecurityException"></exception>
+		/// <exception cref="UriFormatException"></exception>
+		public static async Task<HttpStatusCode> TestUrlAsync(string url) {
+			HttpWebRequest request = WebRequest.CreateHttp(url);
+			using (MyHttpWebResponse myResponse = await request.GetResponseAsyncNoException()) {
+				return myResponse.response.StatusCode;
+			}
+		}
+
+		/// <summary>
 		/// Get the status code description name from an integer statuscode
 		/// <para>1xx: Informational - Request received, continuing process</para>
 		/// <para>2xx: Success - The action was successfully received, understood, and accepted</para>

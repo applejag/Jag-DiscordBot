@@ -19,12 +19,14 @@ namespace DiscordBot.Modules {
 		private CmdEval cmdEval = new CmdEval();
 		public sealed class CmdEval : Command<Eval> {
 			public override string name { get; } = "eval";
-			public override CommandPerm requires { get; } = CommandPerm.None;
+			public override CommandPerm requires { get; } = CommandPerm.Mention;
 			public override string description { get; } = "Uses NCalc to evaluate a mathematical expression. Supports functions, ex: sqrt() but also dates in the format #2014-09-25# plus additional methods for handleing dates, ex: days(#2014-09-25#) gives the differance in days to said date.";
 			public override string usage { get; } = "<Math>";
 			public override string[] alias { get; internal set; } = { "e", "math", "calc" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
+				if (string.IsNullOrWhiteSpace(rest)) return false;
+
 				await e.Channel.SendIsTyping();
 
 				string reply;

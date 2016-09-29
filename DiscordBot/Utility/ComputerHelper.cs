@@ -38,7 +38,8 @@ namespace DiscordBot.Utility {
 
 		public static void HandleTimer(object sender, EventArgs args) {
 			var now = DateTime.Now;
-			cpuHistory.Add(now, cpu.NextValue());
+			if (cpuHistory.ContainsKey(now)) cpuHistory[now] = cpu.NextValue();
+			else cpuHistory.Add(now, cpu.NextValue());
 			cpuHistory.RemoveAll(x => (now - x.Key).TotalSeconds > HISTORY_MAX_AGE_SECONDS);
 		}
 

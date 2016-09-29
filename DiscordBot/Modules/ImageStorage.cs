@@ -172,7 +172,7 @@ namespace DiscordBot.Modules {
 			public override string name { get; } = "send";
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
 			public override string description { get; } = "Sends an image from the bots local storage.\nNotes:\n- The filter/needles used may only be a partial match, but it will pick one random of all the matches it finds.\n- The algorithm checks if ALL needles match, not just if one matched.\n- If filtered only with an asterisk ( * ) it will randomize between all images stored.";
-			public override string usage { get; } = "<needle> [needle 2] [needle 3] etc.";
+			public override string usage { get; } = "<needle> [needle 2] [needle 3] [needle n]";
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {// Error message
 				if (args.Length < 2) {

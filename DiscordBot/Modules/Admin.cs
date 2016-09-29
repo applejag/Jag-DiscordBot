@@ -157,14 +157,14 @@ namespace DiscordBot.Modules {
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length > 1) return false;
 
-				Message status = await DynamicSendMessage(e, "`" + e.Message.RawText + "`\n*Calculating stats...*");
+				Message status = await DynamicSendMessage(e, "`" + e.Message.Text + "`\n*Calculating stats...*");
 				await e.Channel.SendIsTyping();
 
 				float cpuUsage = ComputerHelper.GetCPUUsage();
 				long allocatedMemory = ComputerHelper.GetAllocatedMemory();
 				long freeMemory = ComputerHelper.GetAvailableMemory();
 
-				await status.SafeEdit("`" + e.Message.RawText + "`\n**Status for bot running " + bot.client.CurrentUser.Mention + "**\n```\n"
+				await status.SafeEdit("`" + e.Message.Text + "`\n**Status for bot running " + bot.client.CurrentUser.Mention + "**\n```\n"
 					+ "Online since: " + bot.activeSince.ToString("yyyy-MM-dd HH:mm:ss") + "\n"
 					+ "Online for: " + StringHelper.FormatTimespan(DateTime.Now - bot.activeSince) + "\n"
 					+ string.Format("CPU usage: {0:n2} %", cpuUsage) + "\n"

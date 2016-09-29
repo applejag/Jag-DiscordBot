@@ -165,11 +165,11 @@ namespace DiscordBot.Utility {
 		/// <summary>
 		/// Similar to the <see cref="DynamicSendMessage(MessageEventArgs, string)"/>, where it checks if the message needs to include a mention.
 		/// </summary>
-		public static async Task<Message> DynamicEditMessage(Message message, string newText, bool isMe) {
+		public static async Task<Message> DynamicEditMessage(Message message, string newText, User other) {
 			if (message == null)
 				throw new ArgumentNullException("message");
 
-			if (isMe) {
+			if (message.User.Id == other.Id) {
 				// Dont need to mention myself
 				return await message.SafeEdit(newText);
 			} else {
@@ -177,7 +177,7 @@ namespace DiscordBot.Utility {
 				return await message.SafeEdit(
 					message.Channel.IsPrivate
 					? newText
-					: message.User.Mention + " " + newText
+					: other.Mention + " " + newText
 				);
 			}
 		}

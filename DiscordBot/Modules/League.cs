@@ -111,7 +111,6 @@ namespace DiscordBot.Modules {
 
 					LogHelper.LogException("Unexpected error when fetching player!", err);
 					await DynamicEditMessage(status, e.User, "Unexpected error when adding player `" + lol + "`\n```" + err.Message + "```");
-					throw;
 				}
 				return true;
 			}
@@ -181,7 +180,7 @@ namespace DiscordBot.Modules {
 					} catch (Exception err) {
 						bugs += "\nError while loading stats for `" + p.name + "` (" + e.Server.GetUser(p.discord_user) + ")\n```" + err.Message + "```\n";
 						LogHelper.LogException("Unexpected exception while fetching LoL player data!", err);
-						throw;
+						return true;
 					}
 				}
 
@@ -320,7 +319,7 @@ namespace DiscordBot.Modules {
 			}
 
 			public async Task<bool> CheckRank(Module module) {
-				if (string.IsNullOrWhiteSpace(rank.division) || string.IsNullOrWhiteSpace(rank.tier)) {
+				if (string.IsNullOrWhiteSpace(rank?.division) || string.IsNullOrWhiteSpace(rank.tier)) {
 					// Haven't been checked even onceuu
 					rank = await Rank.FetchFromID(id);
 					name = rank.entries[0].playerOrTeamName ?? name;
@@ -376,6 +375,7 @@ namespace DiscordBot.Modules {
 		[Serializable]
 		public class Rank {
 
+			public static Rank Unranked => new Rank { tier = "UNRANKED", entries = new Entries[] { new Entries { division = "UNRANKED" } } };
 			public string division { get {
 					return entries != null && entries.Length > 0 ? entries[0].division : string.Empty;
 				} set {
@@ -411,12 +411,20 @@ namespace DiscordBot.Modules {
 				}
 			}
 
+
 			public static async Task<Rank> FetchFromID(long id) {
 				int tries = 3;
 			Retry:
 				try {
 					HttpWebRequest request = WebRequest.CreateHttp(URLGetLeagueEntriesBySummonerId(id));
-					return JsonConvert.DeserializeObject<Dictionary<string, List<Rank>>>(await request.GetHTMLContent()).Values?.First().First(r => r?.queue == "RANKED_SOLO_5x5");
+					var json = JsonConvert.DeserializeObject<Dictionary<string, List<Rank>>>(await request.GetHTMLContent());
+					var user = json.Values?.First();
+					foreach (var r in user) {
+						if (r?.queue == "RANKED_SOLO_5x5")
+							return r;
+					}
+					return Rank.Unranked;
+
 				} catch (WebRequestHelper.MyHttpWebException err) {
 					if (err.StatusCode == HttpStatusCode.InternalServerError && tries > 0) {
 						tries--;
@@ -425,7 +433,7 @@ namespace DiscordBot.Modules {
 						goto Retry;
 					}
 					if (err.StatusCode == HttpStatusCode.NotFound)
-						return new Rank { tier = "UNRANKED", entries = new Entries[] { new Entries { division = "UNRANKED" } } };
+						return Rank.Unranked;
 					else throw;
 				}
 			}

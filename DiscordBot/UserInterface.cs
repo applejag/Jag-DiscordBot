@@ -32,11 +32,102 @@ namespace DiscordBot {
 			} }
 		};
 
+		public static string AskForYoutubeKey() {
+			string key = string.Empty;
+			bool running = true;
+			string err = null;
+
+			// Load from saved data
+			if (!string.IsNullOrWhiteSpace(SaveData.singleton.Youtube_Key))
+				key = SaveData.singleton.Youtube_Key;
+
+			do {
+				Console.Clear();
+
+				// Error message
+				if (err != null) {
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("[ " + err + " ]");
+					err = null;
+				}
+
+				// List tokens list (what?)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Current chosen youtube key:");
+
+				if (!string.IsNullOrWhiteSpace(key)) {
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.Write("- ");
+					Console.ForegroundColor = ConsoleColor.Cyan;
+					Console.Write("\"");
+					Console.ForegroundColor = ConsoleColor.Gray;
+					Console.Write(key);
+					Console.ForegroundColor = ConsoleColor.Cyan;
+					Console.WriteLine("\"");
+				} else {
+					Console.ForegroundColor = ConsoleColor.Gray;
+					Console.WriteLine("< no key >");
+				}
+
+				// List commands
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("\nAvailable commands:");
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("set <key>");
+				if (!string.IsNullOrWhiteSpace(key))
+					Console.WriteLine("done");
+
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.Write("\n> ");
+				Console.ForegroundColor = ConsoleColor.White;
+
+				// Read & interpret input
+				string[] input = Console.ReadLine().Trim().Split(' ');
+
+				if (input.Length == 0) {
+					err = "Please enter a command!";
+				} else {
+					switch (input[0].ToLower()) {
+						case "set":
+							if (input.Length != 2)
+								err = "Please enter a valid command!";
+							else {
+								string t = string.Join(" ", input.SubArray(1)).Trim();
+								string pattern = "^[a-zA-Z0-9\\-_]*$";
+								if (Regex.IsMatch(t, pattern))
+									key = t;
+								else
+									err = "Please enter a valid key!";
+							}
+							break;
+
+						case "done":
+							if (string.IsNullOrWhiteSpace(key) || input.Length > 1)
+								err = "Please enter a valid command!";
+							else
+								running = false;
+							break;
+
+						default:
+							err = "Please enter a valid command!";
+							break;
+					}
+				}
+
+			} while (running);
+
+			Console.Clear();
+
+			SaveData.singleton.Youtube_Key = key;
+			return key;
+		}
+
 		public static string[] AskForTokens() {
 			bool running = true;
 			string err = null;
 			List<string> tokens;
 
+			// Load from saved data
 			if (SaveData.singleton.Bot_tokens != null && SaveData.singleton.Bot_tokens.Length > 0)
 				tokens = new List<string>(SaveData.singleton.Bot_tokens);
 			else
