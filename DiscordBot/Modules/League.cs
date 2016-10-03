@@ -26,7 +26,7 @@ namespace DiscordBot.Modules {
 		public override void Init() {
 			players = new Dictionary<string, Player>();
 			if (SaveData.singleton.League_players != null && SaveData.singleton.League_players.Length > 0) {
-				LoadPlayers().WaitAndUnwrapException();
+				LoadPlayersFromSave().WaitAndUnwrapException();
 			}
 
 			// Starts timer
@@ -84,12 +84,12 @@ namespace DiscordBot.Modules {
 
 				if (me.players.Values.Any(p => p.discord_user == user_id)) {
 					Player taken = me.players.Values.First(p => p.discord_user == user_id);
-					await DynamicSendMessage(e, "User `" + taken.name + "` is already registered! Please unregister user " + e.Server.GetUser(taken.discord_user).Mention + " first, then try again.");
+					await DynamicSendMessage(e, ":heavy_exclamation_mark: User `" + taken.name + "` is already registered! Please unregister user " + e.Server.GetUser(taken.discord_user).Mention + " first, then try again.");
 					return false;
 				}
 
 				LogHelper.LogInformation("Adding player '" + lol + "' to account @" + user.Name + "#" + user.Discriminator + ", validating using Riots API...");
-				Message status = await DynamicSendMessage(e, "Checking with Riot Games API for an `" + lol + "`...");
+				Message status = await DynamicSendMessage(e, ":arrows_counterclockwise: Checking with Riot Games API for an `" + lol + "`...");
 
 				Player player = null;
 				try {
@@ -102,15 +102,23 @@ namespace DiscordBot.Modules {
 
 					me.players.Add(player.name, player);
 					LogHelper.LogSuccess("Player '" + player.name + "' (summoner:" + player.id + ") has been added!");
-					await DynamicEditMessage(status, e.User, "Player `" + player.name + "` successfully added!");
+					await DynamicEditMessage(status, e.User, ":ballot_box_with_check: Player `" + player.name + "` successfully added!");
+
+					// Save
+					SaveData.singleton.League_players = me.players.Values.ToArray();
+					SaveData.Save();
 
 				} catch (Exception err) {
 					// Cleanup
 					if (player != null)
 						me.players.Remove(player.name);
 
+					// Save
+					SaveData.singleton.League_players = me.players.Values.ToArray();
+					SaveData.Save();
+
 					LogHelper.LogException("Unexpected error when fetching player!", err);
-					await DynamicEditMessage(status, e.User, "Unexpected error when adding player `" + lol + "`\n```" + err.Message + "```");
+					await DynamicEditMessage(status, e.User, ":x: Unexpected error when adding player `" + lol + "`\n```" + err.Message + "```");
 				}
 				return true;
 			}
@@ -122,7 +130,7 @@ namespace DiscordBot.Modules {
 			public override CommandPerm requires { get; } = CommandPerm.Whitelist;
 			public override string description { get; } = "Opposite of add. Removes a player from the watch list.";
 			public override string usage { get; } = "<Discord mention>";
-			public override string[] alias { get; internal set; } = { "del", "remove" };
+			public override string[] alias { get; internal set; } = { "del", "remove", "-" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length == 1) {
@@ -142,11 +150,15 @@ namespace DiscordBot.Modules {
 					me.players.Remove(player.name);
 					player.dead = true;
 					LogHelper.LogSuccess("Player '" + player.name + "' (summoner:" + player.id + ") has been unregistered!");
-					await DynamicSendMessage(e, "Player `" + player.name + "` has successfully been unregistered from " + dis + "!");
+					await DynamicSendMessage(e, ":ballot_box_with_check: Player `" + player.name + "` has successfully been unregistered from " + dis + "!");
+
+					// Save
+					SaveData.singleton.League_players = me.players.Values.ToArray();
+					SaveData.Save();
 
 				} catch (Exception err) {
 					LogHelper.LogException("Unexpected error when unregistering player!", err);
-					await DynamicSendMessage(e, "Unexpected error when unregistering user " + dis + "\n```" + err.Message + "```");
+					await DynamicSendMessage(e, ":x: Unexpected error when unregistering user " + dis + "\n```" + err.Message + "```");
 					throw;
 				}
 				return true;
@@ -162,7 +174,7 @@ namespace DiscordBot.Modules {
 			public override string[] alias { get; internal set; } = { "update", "check" };
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
-				Message status = await DynamicSendMessage(e, "Refreshing all users...");
+				Message status = await DynamicSendMessage(e, ":arrows_counterclockwise: Refreshing all users...");
 
 				LogHelper.LogInformation("Refreshing league player data...");
 				string bugs = string.Empty;
@@ -185,10 +197,15 @@ namespace DiscordBot.Modules {
 				}
 
 				if (count == me.players.Count) {
-					await DynamicEditMessage(status, e.User, string.Format("Reloaded {0}/{0} profiles successfully.", me.players.Count, me.players.Count));
+					await DynamicEditMessage(status, e.User, string.Format(":ballot_box_with_check: Reloaded {0}/{0} profiles successfully.", me.players.Count));
 				} else {
-					await DynamicEditMessage(status, e.User, string.Format("Reloaded {0}/{1} profiles successfully.\n", count, me.players.Count) + bugs);
+					await DynamicEditMessage(status, e.User, string.Format(":ballot_box_with_check: Reloaded {0}/{1} profiles successfully.\n", count, me.players.Count) + bugs);
 				}
+
+				// Save
+				SaveData.singleton.League_players = me.players.Values.ToArray();
+				SaveData.Save();
+
 				return true;
 			}
 		}
@@ -218,7 +235,7 @@ namespace DiscordBot.Modules {
 		}
 		#endregion
 
-		private async Task LoadPlayers() {
+		private async Task LoadPlayersFromSave() {
 			LogHelper.LogInformation("Started fetching player data...");
 			// Reload from 'net
 			foreach (var p in SaveData.singleton.League_players) {
@@ -260,6 +277,10 @@ namespace DiscordBot.Modules {
 
 							if (levelup)
 								LogHelper.LogSuccess("'" + player.name + "' gained a rank! (via automatic update).");
+
+							// Save
+							SaveData.singleton.League_players = players.Values.ToArray();
+							SaveData.Save();
 						} catch (WebRequestHelper.MyHttpWebException) {
 							//bugs += "\nError while loading stats for `" + p.name + "` (" + e.Server.GetUser(p.discord_user) + ")\n```" + err.Message + "```\n";
 							LogHelper.LogWarning(string.Format("Error while trying to automatically check player rank for '{0}'. Will retry in {1} minutes",
@@ -314,7 +335,7 @@ namespace DiscordBot.Modules {
 				Channel channel = server.GetChannel(discord_channel);
 				User user = server.GetUser(discord_user);
 
-				await channel.SafeSendMessage(":dancer:**Congratulations " + user.Mention + " !!** :confetti_ball::tada:\n\n:yellow_heart::purple_heart: You just promoted yourself from *" + old + "* to **" + rank + "** :metal::boom:");
+				await channel.SafeSendMessage(":dancer: **Congratulations " + user.Mention + " !!** :confetti_ball::tada:\n\n:yellow_heart::purple_heart: You just promoted yourself from *" + old + "* to **" + rank + "** :metal::boom:");
 				await channel.SendFileFromWeb(URLGetProfilePicture(profileIconId));
 			}
 

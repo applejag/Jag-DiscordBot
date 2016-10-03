@@ -53,7 +53,7 @@ namespace DiscordBot.Modules {
 							await DiscordHelper.DynamicSendMessage(e, "`" + e.Message.Text + "`\n" + cmd.GetInformation());
 					} catch (Exception err) {
 						LogHelper.LogException("Error executing command \"" + cmd.name + "\"", err);
-						await e.Channel.SafeSendMessage("Error executing command!\n```" + err.Message + "```");
+						await e.Channel.SafeSendMessage(":x: Error executing command!\n```" + err.Message + "```");
 					}
 					return;
 				} else if (parsed is Module) {
@@ -67,7 +67,7 @@ namespace DiscordBot.Modules {
 						await DiscordHelper.DynamicSendMessage(e, "`" + e.Message.Text + "`\n" + info);
 					} catch (Exception err) {
 						LogHelper.LogException("Error sending module info \"" + mod.GetType().Name + "\"", err);
-						await e.Channel.SafeSendMessage("Error sending module info!\n```" + err.Message + "```");
+						await e.Channel.SafeSendMessage(":x: Error sending module info!\n```" + err.Message + "```");
 					}
 				}
 			}

@@ -61,7 +61,7 @@ namespace DiscordBot.Modules {
 
 				var quack = RandomQuackFile();
 				if (quack == null) {
-					await DynamicSendMessage(e, ":duck: **No quacks found!**");
+					await DynamicSendMessage(e, "🦆 **No quacks found!**");
 					return true;
 				}
 				

@@ -34,7 +34,7 @@ namespace DiscordBot.Modules {
 		}
 
 		public async Task<Message> DynamicEditMessage(Message message, User target, string text) {
-			return await DiscordHelper.DynamicEditMessage(message, text, target);
+			return await DiscordHelper.DynamicEditMessage(message, target, text);
 		}
 		#endregion
 	}

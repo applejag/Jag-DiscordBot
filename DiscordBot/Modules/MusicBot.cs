@@ -27,6 +27,7 @@ namespace DiscordBot.Modules {
 		public List<Song> songHistory = new List<Song>();
 		public Queue<Song> songQueue = new Queue<Song>();
 		public Queue<Song> songPlaylist = new Queue<Song>();
+		public List<ConvertSong> convertQueue = new List<ConvertSong>();
 		public Song? songCurrent = null;
 		public IAudioClient audio;
 
@@ -36,6 +37,7 @@ namespace DiscordBot.Modules {
 		public bool musicStopped = false;
 		public bool musicSkip = false;
 		public bool idlePlayer { get; private set; } = true;
+		public bool converting = false;
 
 		public override void Init() {
 			volume = SaveData.singleton.Music_volume;
@@ -237,26 +239,26 @@ namespace DiscordBot.Modules {
 					}
 				}
 
-				string url = "http://www.youtube.com/playlist?list=" + playlistID;
+				// Get the list of videos in playlist
 
 				if (status == null) status = await DynamicSendMessage(e, ":musical_note: *Fetching playlist videos...*");
 				else status = await DynamicEditMessage(status, e.User, ":musical_note: *Fetching playlist videos...*");
 				LogHelper.LogInformation("Fetching playlist items...");
 
+				// Fill list of playlist songs
 				me.songPlaylist.Clear();
 				List<Song> items = await me.FetchPlaylistItems(playlistID);
-
 				if (shuffle) items.Shuffle();
-
+				
 				foreach (var item in items)
 					me.songPlaylist.Enqueue(item);
 
 				// Döne
 				string x = me.songPlaylist.Count + (me.songPlaylist.Count == 1 ? " song" : " songs");
 				LogHelper.LogSuccess("Added " + x + " to the music queue!");
-				await DynamicEditMessage(status, e.User, ":musical_note: **Fetching complete! " + x + " has been queued!**");
+				await DynamicEditMessage(status, e.User, ":musical_note: **Fetching complete! " + x + " has been listed!** _Will queue them when needed_");
 
-				me.QueuePlaylistedSong(e);
+				me.QueueYoutubeSongFromPlaylist();
 
 				return true;
 			}
@@ -415,21 +417,18 @@ namespace DiscordBot.Modules {
 			public override string description { get; } = "Queue a YouTube song!\nYouTube link and video ID is acceptable as input.";
 			public override string usage { get; } = "<video url or id>";
 			public override string[] alias { get; internal set; } = { "add", "q" };
-			public bool queueing = false;
 
 			public override async Task<bool> Callback(MessageEventArgs e, string[] args, string rest) {
 				if (args.Length != 2) return false;
 
 				string videoID = string.Empty;
 				Message status = null;
-				queueing = true;
 
 				// Check what input we got. Youtube url? Youtu.be url? Youtube video id? Youtube playlist id?
 				Uri uri;
 				if (Uri.TryCreate(args[1], UriKind.Absolute, out uri)) {
 					if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) {
-						await DynamicSendMessage(e, ":musical_note: **Invalid youtube url!** _(Unacceptable uri scheme)_");
-						queueing = false;
+						await DynamicSendMessage(e, ":x: **Invalid youtube url!** _(Unacceptable uri scheme)_");
 						return true;
 					}
 
@@ -440,8 +439,7 @@ namespace DiscordBot.Modules {
 						if (p.ContainsKey("v"))
 							videoID = p["v"];
 						else {
-							await DynamicSendMessage(e, ":musical_note: **Invalid youtube url!** _(Missing video id)_");
-							queueing = false;
+							await DynamicSendMessage(e, ":x: **Invalid youtube url!** _(Missing video id)_");
 							return true;
 						}
 
@@ -451,57 +449,98 @@ namespace DiscordBot.Modules {
 						if (id.Length > 1 && (id = id.Substring(1)).IndexOf('/') == -1) {
 							videoID = id;
 						} else {
-							await DynamicSendMessage(e, ":musical_note: **Invalid youtube url!** _(Missing video id)_");
-							queueing = false;
+							await DynamicSendMessage(e, ":x: **Invalid youtube url!** _(Missing video id)_");
 							return true;
 						}
 					} else {
-						await DynamicSendMessage(e, ":musical_note: **Invalid youtube url!** _(Unacceptable uri host)_");
-						queueing = false;
+						await DynamicSendMessage(e, ":x: **Invalid youtube url!** _(Unacceptable uri host)_");
 						return true;
 					}
 				} else {
 					// Not an url, assume it's a video id
-					status = await DynamicSendMessage(e, ":musical_note: *Checking if video exists...*");
-					var statusCode = await WebRequestHelper.TestUrlAsync("https://www.youtube.com/oembed?format=json&url=http://www.youtube.com/watch?v=" + Uri.EscapeDataString(args[1]));
-					if (statusCode == System.Net.HttpStatusCode.OK) {
-						videoID = args[1];
-					} else {
-						await DynamicEditMessage(status, e.User, ":musical_note: **Invalid youtube video ID!** _(Video not found)_");
-						queueing = false;
-						return true;
-					}
+					videoID = args[1];
 				}
 
-				string filename = Path.Combine(QUEUE_TEMP_FOLDER, videoID) + ".mp3";
-				string url = "http://www.youtube.com/watch?v=" + videoID;
+				// Check if it exists
+				status = await DynamicSendMessage(e, ":arrows_counterclockwise: *Checking if video exists...*");
+				var statusCode = await WebRequestHelper.TestUrlAsync("https://www.youtube.com/oembed?format=json&url=http://www.youtube.com/watch?v=" + Uri.EscapeDataString(videoID));
+				if (statusCode != System.Net.HttpStatusCode.OK) {
+					await DynamicEditMessage(status, e.User, ":x: **Invalid youtube video ID!** _(Video not found)_");
+					return true;
+				}
 
-				int index;
-				if ((index = me.songHistory.FindIndex(s => s.filename == filename)) != -1) {
-					// Song has been played previously, just queue that one
-					Song song = me.songHistory[index];
+				me.QueueYoutubeSong(videoID, i => {
+					string txt;
+					switch(i) {
+						case 0: return;
 
-					me.songQueue.Enqueue(song);
-					if (status == null) status = await DynamicSendMessage(e, ":musical_note: **Song queued!**\n" + song.name + "\n" + song.url);
-					await DynamicEditMessage(status, e.User, ":musical_note: **Song queued!**\n" + song.name + "\n" + song.url);
-				} else {
+						case CONV_DONE:
+							txt = ":ballot_box_with_check: **Song has been queued!**\nhttp://www.youtube.com/watch?v=" + videoID;
+							me.StartMusicPlayer(e);
+							break;
+
+						case CONV_DOWNLOADING: txt = ":arrows_counterclockwise: *Downloading song...*"; break;
+						case CONV_CONVERTING: txt = ":arrows_counterclockwise: *Download complete, converting song...*"; break;
+						case CONV_ALREADY_QUEUED: txt = ":x: **Song is currently in the queue of converting, please wait!**"; break;
+						default: txt = ":clock10: *Queued to convert. Current place: `" + i + "`*"; break;
+					}
+
+					if (status == null) status = DynamicSendMessage(e, txt).WaitAndUnwrapException();
+					else status = status.DynamicEditMessage(e.User, txt).WaitAndUnwrapException();
+				});
+
+				// Start converter if not yet running
+				me.StartConverter();
+
+				return true;
+
+			}
+		}
+		#endregion
+		void StartConverter() {
+			// Only one converter at a time
+			if (converting) return;
+
+			// Start converter in new thread
+			(new Thread(() => {
+				Converter();
+			}) {
+				Name = "DiscordBot.MusicBot.Converter",
+				Priority = ThreadPriority.AboveNormal
+			}).Start();
+		}
+
+		void Converter() {
+			// Only one converter at a time
+			if (converting) return;
+			converting = true;
+
+			try {
+				// Loop queue
+				while (converting && convertQueue.Count > 0) {
+					// Call callback on other queued items
+					for(int i=1; i<convertQueue.Count; i++) {
+						convertQueue[i].callback?.Invoke(i);
+					}
+
+					ConvertSong conv = convertQueue[0];
+					string filename = Path.Combine(QUEUE_TEMP_FOLDER, conv.id) + ".mp3";
+
 					// Make a new cache entry of it
-
 					if (File.Exists(filename))
 						File.Delete(filename);
 
 					// Start downloading
-					if (status == null) status = await DynamicSendMessage(e, ":musical_note: *Downloading video...*");
-					else status = await DynamicEditMessage(status, e.User, ":musical_note: *Downloading video...*");
-					LogHelper.LogInformation("Downloading youtube video " + Convert.ToString(url));
-					AudioHelper.DownloadedVideo vid = await AudioHelper.DownloadYoutubeVideo(videoID);
+					conv.callback?.Invoke(CONV_DOWNLOADING);
+					LogHelper.LogInformation("Downloading youtube video http://www.youtube.com/watch?v=" + Convert.ToString(conv.id));
+					AudioHelper.DownloadedVideo vid = AudioHelper.DownloadYoutubeVideo(conv.id).WaitAndUnwrapException();
 
 					// Start converting
-					await DynamicEditMessage(status, e.User, ":musical_note: *Download complete! Converting to mp3...*");
+					conv.callback?.Invoke(CONV_CONVERTING);
 					LogHelper.LogInformation("Download complete, converting to mp3...");
 
 					try {
-						await AudioHelper.ConvertToMp3(vid.videoFilename, filename);
+						AudioHelper.ConvertToMp3(vid.videoFilename, filename).WaitAndUnwrapException();
 					} finally {
 						File.Delete(vid.videoFilename);
 					}
@@ -511,26 +550,21 @@ namespace DiscordBot.Modules {
 					var song = new Song {
 						filename = filename,
 						name = vid.videoTitle,
-						id = videoID,
+						id = conv.id,
 					};
-					me.songQueue.Enqueue(song);
-					me.songHistory.Add(song);
-					await DynamicEditMessage(status, e.User, ":musical_note: **Song queued!**\n" + vid.videoTitle + "\n" + vid.videoUri);
+					songQueue.Enqueue(song);
+					songHistory.Add(song);
+					conv.callback?.Invoke(CONV_DONE);
+
+					convertQueue.RemoveAt(0);
 				}
 
-				me.StartMusicPlayer(e);
-
-				// Start queueing another song in another thread
-				if (me.songQueue.Count < 2 && me.songPlaylist.Count > 0)
-					me.QueuePlaylistedSong(e);
-				else
-					queueing = false;
-
-				return true;
-
+			} catch (Exception err) {
+				LogHelper.LogException("Unexpected exception in MusicBot converter", err);
+			} finally {
+				converting = false;
 			}
 		}
-		#endregion
 
 		async void StartMusicPlayer(MessageEventArgs e) {
 			// Join channel
@@ -545,8 +579,8 @@ namespace DiscordBot.Modules {
 				(new Thread(() => {
 					MusicPlayer();
 				}) {
-					Name = "DiscordBot.MusicBot",
-					Priority = ThreadPriority.AboveNormal
+					Name = "DiscordBot.MusicBot.MusicPlayer",
+					Priority = ThreadPriority.Highest
 				}).Start();
 			}
 		}
@@ -555,12 +589,12 @@ namespace DiscordBot.Modules {
 			try {
 				idlePlayer = false;
 				LogHelper.LogInformation("Started music player!");
+
 				while (songQueue.Count > 0 && !musicStopped) {
 					musicSkip = false;
 
 					// Queue upcoming songs
-					if (!cmdQueue.queueing)
-						QueuePlaylistedSong();
+					QueueYoutubeSongFromPlaylist();
 
 					// Queue next song
 					songCurrent = songQueue.Dequeue();
@@ -628,60 +662,39 @@ namespace DiscordBot.Modules {
 					}
 				}
 			} catch (Exception err) {
-				LogHelper.LogException("Unexpected exception while sending MP3 data...", err);
+				LogHelper.LogException("Unexpected exception while sending MP3 data", err);
 			}
 		}
 
-		private void QueuePlaylistedSong(MessageEventArgs e = null) {
+		private void QueueYoutubeSongFromPlaylist() {
 			if (songPlaylist.Count == 0) return;
 
-			(new Thread(() => {
-			Song q = songPlaylist.Dequeue();
-			string filename = Path.Combine(QUEUE_TEMP_FOLDER, q.id) + ".mp3";
-			string url = "http://www.youtube.com/watch?v=" + q.id;
+			// Start queueing songs
+			while (songQueue.Count + convertQueue.Count < 2) {
+				// Move from playlist to convert queue
+				convertQueue.Enqueue(new ConvertSong { id = songPlaylist.Dequeue().id });
+			}
+			StartConverter();
+		}
+
+		public void QueueYoutubeSong(string videoID, Action<int> callback = null) {
+			string filename = Path.Combine(QUEUE_TEMP_FOLDER, videoID) + ".mp3";
 
 			int index;
 			if ((index = songHistory.FindIndex(s => s.filename == filename)) != -1) {
 				// Song has been played previously, just queue that one
 				Song song = songHistory[index];
+
 				songQueue.Enqueue(song);
+				callback?.Invoke(CONV_DONE);
 			} else {
-				// Make a new cache entry of it
-
-				if (File.Exists(filename))
-					File.Delete(filename);
-
-				// Start downloading
-				LogHelper.LogInformation("Downloading youtube video " + Convert.ToString(url));
-				AudioHelper.DownloadedVideo vid = AudioHelper.DownloadYoutubeVideo(q.id).Result;
-
-				// Start converting
-				LogHelper.LogInformation("Download complete, converting to mp3...");
-
-				try {
-					AudioHelper.ConvertToMp3(vid.videoFilename, filename).Wait();
-				} finally {
-					File.Delete(vid.videoFilename);
+				if (convertQueue.Any(s => s.id == videoID))
+					callback?.Invoke(CONV_ALREADY_QUEUED);
+				else {
+					convertQueue.Enqueue(new ConvertSong { id=videoID, callback=callback });
+					callback?.Invoke(convertQueue.Count - 1);
 				}
-				LogHelper.LogSuccess("Task complete!");
-
-				// Queue song
-				var song = new Song {
-					filename = filename,
-					name = vid.videoTitle,
-					id = vid.videoID,
-				};
-				songQueue.Enqueue(song);
-				songHistory.Add(song);
 			}
-
-			if (e != null) StartMusicPlayer(e);
-
-			// Start queueing another song in another thread
-			if (songQueue.Count < 2 && songPlaylist.Count > 0)
-				QueuePlaylistedSong(e);
-
-			}) { Name = "DiscordBot.PlaylistQueuer", IsBackground = true }).Start();
 		}
 
 		public async Task<List<Song>> FetchPlaylistItems(string playlistID) {
@@ -721,6 +734,18 @@ namespace DiscordBot.Modules {
 			public string filename;
 			public string url => "http://www.youtube.com/watch?v=" + id;
 		}
+
+		public struct ConvertSong {
+			public string id;
+			public Action<int> callback;
+		}
+
+		#region MACROS
+		public const int CONV_DONE = -1;
+		public const int CONV_DOWNLOADING = -2;
+		public const int CONV_CONVERTING = -3;
+		public const int CONV_ALREADY_QUEUED = -4;
+		#endregion
 
 	}
 }

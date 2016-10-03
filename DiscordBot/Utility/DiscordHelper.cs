@@ -144,7 +144,7 @@ namespace DiscordBot.Utility {
 		/// <summary>
 		/// Dynamically checks if the reply to the <see cref="MessageEventArgs"/> needs to include a mention, based of if it's a selfbot and private or public channel.
 		/// </summary>
-		public static async Task<Message> DynamicSendMessage(MessageEventArgs e, string text) {
+		public static async Task<Message> DynamicSendMessage(this MessageEventArgs e, string text) {
 			if (e?.Message == null || e?.Channel == null)
 				throw new ArgumentNullException("e");
 
@@ -165,7 +165,7 @@ namespace DiscordBot.Utility {
 		/// <summary>
 		/// Similar to the <see cref="DynamicSendMessage(MessageEventArgs, string)"/>, where it checks if the message needs to include a mention.
 		/// </summary>
-		public static async Task<Message> DynamicEditMessage(Message message, string newText, User other) {
+		public static async Task<Message> DynamicEditMessage(this Message message, User other, string newText) {
 			if (message == null)
 				throw new ArgumentNullException("message");
 

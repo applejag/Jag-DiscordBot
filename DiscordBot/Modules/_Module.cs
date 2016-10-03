@@ -14,6 +14,7 @@ namespace DiscordBot.Modules {
 		public DiscordClient client { get { return bot == null ? null : bot.client; } }
 		public virtual string modulePrefix { get { return null; } }
 		public virtual string description { get { return null; } }
+		public bool shutdown => bot?.valid ?? false;
 		public string GetInformation() {
 			if (string.IsNullOrWhiteSpace(modulePrefix)) return null;
 
@@ -65,6 +66,16 @@ namespace DiscordBot.Modules {
 
 		public Command[] GetCommands() {
 			return bot.commands.Where(cmd => cmd.module == this).ToArray();
+		}
+		#endregion
+
+		#region Safe Message Wrappers
+		public static async Task<Message> DynamicSendMessage(MessageEventArgs e, string text) {
+			return await DiscordHelper.DynamicSendMessage(e, text);
+		}
+
+		public async Task<Message> DynamicEditMessage(Message message, User target, string text) {
+			return await DiscordHelper.DynamicEditMessage(message, target, text);
 		}
 		#endregion
 
