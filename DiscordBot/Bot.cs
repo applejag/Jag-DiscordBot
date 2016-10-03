@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace DiscordBot {
-	public sealed class Bot {
+	public sealed class Bot : IDisposable {
 
 		internal readonly static string[] whitelist = {
 			"applejag#6330",
@@ -124,7 +124,7 @@ namespace DiscordBot {
 				LogHelper.LogException("Error initializing bot client!", err);
 			}
 		}
-
+		
 		public void Dispose() {
 			LogHelper.LogCenter("Shutting down bot...", ConsoleColor.Green);
 			valid = false;

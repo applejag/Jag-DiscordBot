@@ -258,7 +258,7 @@ namespace DiscordBot.Modules {
 				LogHelper.LogSuccess("Added " + x + " to the music queue!");
 				await DynamicEditMessage(status, e.User, ":musical_note: **Fetching complete! " + x + " has been listed!** _Will queue them when needed_");
 
-				me.QueueYoutubeSongFromPlaylist();
+				me.QueueYoutubeSongFromPlaylist(i=> { if (i == CONV_DONE) me.StartMusicPlayer(e); });
 
 				return true;
 			}
@@ -500,10 +500,15 @@ namespace DiscordBot.Modules {
 		void StartConverter() {
 			// Only one converter at a time
 			if (converting) return;
+			if (convertQueue.Count == 0) return;
 
 			// Start converter in new thread
 			(new Thread(() => {
-				Converter();
+				try {
+					Converter();
+				} catch (Exception err) {
+					LogHelper.LogException("Exception in song converter!", err);
+				}
 			}) {
 				Name = "DiscordBot.MusicBot.Converter",
 				Priority = ThreadPriority.AboveNormal
@@ -666,13 +671,13 @@ namespace DiscordBot.Modules {
 			}
 		}
 
-		private void QueueYoutubeSongFromPlaylist() {
+		private void QueueYoutubeSongFromPlaylist(Action<int> callback = null) {
 			if (songPlaylist.Count == 0) return;
 
 			// Start queueing songs
 			while (songQueue.Count + convertQueue.Count < 2) {
 				// Move from playlist to convert queue
-				convertQueue.Enqueue(new ConvertSong { id = songPlaylist.Dequeue().id });
+				convertQueue.Enqueue(new ConvertSong { id = songPlaylist.Dequeue().id, callback = callback });
 			}
 			StartConverter();
 		}

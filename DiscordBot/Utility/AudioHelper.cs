@@ -51,8 +51,10 @@ namespace DiscordBot.Utility {
 				StartInfo = {
 					UseShellExecute = false,
 					RedirectStandardError = true,
+					RedirectStandardOutput = true,
 					FileName = FFMPEG_PATH,
-					Arguments = args
+					Arguments = args,
+					CreateNoWindow = true,
 				}
 			};
 
@@ -61,8 +63,10 @@ namespace DiscordBot.Utility {
 					if (!ffmpeg.Start()) {
 						LogHelper.LogError("Error starting FFMpeg!");
 					}
-					
+
+					ffmpeg.StandardOutput.ReadToEnd();
 					ffmpeg.WaitForExit();
+					ffmpeg.Dispose();
 
 				} catch (Exception err) {
 					LogHelper.LogException("Error executing FFMpeg!", err);
