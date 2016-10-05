@@ -182,12 +182,18 @@ namespace DiscordBot.Utility {
 			}
 		}
 		
+		public static async Task<Message> SendFileFromWeb(this Channel channel, string url, string ext = ".txt") {
+			return await SendFileFromWeb(channel, url, Path.GetTempFileName(), ext);
+		} 
+
 		/// <summary>
 		/// Downloads a file to a temporaryly from <paramref name="url"/> and sends it.
 		/// </summary>
 		/// <param name="channel">The channel the file will be sent to</param>
 		/// <param name="url">The url to download the file from</param>
-		public static async Task<Message> SendFileFromWeb(this Channel channel, string url) {
+		/// <param name="title">The name of the file to be sent</param>
+		/// <param name="ext">If the url does not contain an extension then use this value</param>
+		public static async Task<Message> SendFileFromWeb(this Channel channel, string url, string title, string ext = ".txt") {
 			if (channel == null)
 				throw new ArgumentNullException("channel");
 			if (string.IsNullOrWhiteSpace(url))
@@ -199,8 +205,8 @@ namespace DiscordBot.Utility {
 				DateTime start = DateTime.Now;
 				// Create directory if needed
 
-				string tmp = Path.GetTempFileName();
-				string filename = Path.ChangeExtension(tmp, new FileInfo(new Uri(url).AbsolutePath).Extension ?? ".txt");
+				string tmp = Path.GetInvalidFileNameChars().Aggregate(title, (current, c) => current.Replace(c, '_'));
+				string filename = tmp + ext;
 				new FileInfo(filename).Directory.Create();
 				// Start downling
 				await client.DownloadFileTaskAsync(url, filename);

@@ -94,6 +94,7 @@ namespace DiscordBot {
 				modules.Add(new Admin("bot"));
 				modules.Add(new DuckHorn());
 				modules.Add(new MusicBot());
+				modules.Add(new Wolfram());
 			}
 			#endregion
 

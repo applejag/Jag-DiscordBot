@@ -32,14 +32,10 @@ namespace DiscordBot {
 			} }
 		};
 
-		public static string AskForYoutubeKey() {
-			string key = string.Empty;
+		public static string AskForSingleKey(string title, string start = null) {
+			string key = start;
 			bool running = true;
 			string err = null;
-
-			// Load from saved data
-			if (!string.IsNullOrWhiteSpace(SaveData.singleton.Youtube_Key))
-				key = SaveData.singleton.Youtube_Key;
 
 			do {
 				Console.Clear();
@@ -53,16 +49,16 @@ namespace DiscordBot {
 
 				// List tokens list (what?)
 				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine("Current chosen youtube key:");
+				Console.WriteLine(title);
 
 				if (!string.IsNullOrWhiteSpace(key)) {
 					Console.ForegroundColor = ConsoleColor.Green;
 					Console.Write("- ");
-					Console.ForegroundColor = ConsoleColor.Cyan;
-					Console.Write("\"");
 					Console.ForegroundColor = ConsoleColor.Gray;
-					Console.Write(key);
+					Console.Write("\"");
 					Console.ForegroundColor = ConsoleColor.Cyan;
+					Console.Write(key);
+					Console.ForegroundColor = ConsoleColor.Gray;
 					Console.WriteLine("\"");
 				} else {
 					Console.ForegroundColor = ConsoleColor.Gray;
@@ -117,8 +113,6 @@ namespace DiscordBot {
 			} while (running);
 
 			Console.Clear();
-
-			SaveData.singleton.Youtube_Key = key;
 			return key;
 		}
 

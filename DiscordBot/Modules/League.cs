@@ -275,12 +275,14 @@ namespace DiscordBot.Modules {
 							// Fetch rank
 							bool levelup = await player.CheckRank(this);
 
-							if (levelup)
+							if (levelup) {
 								LogHelper.LogSuccess("'" + player.name + "' gained a rank! (via automatic update).");
 
-							// Save
-							SaveData.singleton.League_players = players.Values.ToArray();
-							SaveData.Save();
+								// Save
+								SaveData.singleton.League_players = players.Values.ToArray();
+								SaveData.Save();
+							}
+
 						} catch (WebRequestHelper.MyHttpWebException) {
 							//bugs += "\nError while loading stats for `" + p.name + "` (" + e.Server.GetUser(p.discord_user) + ")\n```" + err.Message + "```\n";
 							LogHelper.LogWarning(string.Format("Error while trying to automatically check player rank for '{0}'. Will retry in {1} minutes",

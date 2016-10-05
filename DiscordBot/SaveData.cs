@@ -25,6 +25,8 @@ namespace DiscordBot {
 		public float Music_volume;
 		public string Youtube_Key;
 
+		public string Wolfram_Key;
+
 		public string[] Bot_tokens;
 		#endregion
 

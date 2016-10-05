@@ -54,7 +54,8 @@ namespace DiscordBot {
 			SaveData.Load();
 
 			string[] tokens = UserInterface.AskForTokens();
-			UserInterface.AskForYoutubeKey();
+			SaveData.singleton.Youtube_Key = UserInterface.AskForSingleKey("Enter a youtube api key:", SaveData.singleton.Youtube_Key);
+			SaveData.singleton.Wolfram_Key = UserInterface.AskForSingleKey("Enter a wolfram alpha appid:", SaveData.singleton.Wolfram_Key);
 			bots = new Bot[tokens.Length];
 
 			for (int i=0; i<tokens.Length; i++) {
