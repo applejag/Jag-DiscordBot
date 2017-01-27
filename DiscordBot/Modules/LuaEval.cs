@@ -16,7 +16,7 @@ namespace DiscordBot.Modules {
 		public override string modulePrefix { get; } = "lua";
 
 		public override void Init() {
-			script = new Script(CoreModules.Preset_SoftSandbox);
+			script = new Script(CoreModules.Preset_Complete);
 			UserData.RegisterProxyType<LuaInterface.MessageProxy, Message>(m => new LuaInterface.MessageProxy(m));
 			UserData.RegisterProxyType<LuaInterface.UserProxy, User>(u => new LuaInterface.UserProxy(u));
 			UserData.RegisterProxyType<LuaInterface.ChannelProxy, Channel>(c => new LuaInterface.ChannelProxy(c));
@@ -108,8 +108,8 @@ namespace DiscordBot.Modules {
 					if (status != null)
 						await status.SafeEdit(":crescent_moon: **Error!**\n```\n" + err.Message + "```");
 					else
-						await e.Channel.SafeSendMessage(":crescent_moon: **Error!**\n```\n" + err.Message + "```");
-					throw;
+						await e.Channel.SafeSendMessage(":crescent_moon: :x: **Error!**\n```\n" + err.Message + "```");
+					//throw;
 				}
 				me.token = null;
 				return true;
@@ -124,7 +124,7 @@ namespace DiscordBot.Modules {
 			private MessageEventArgs e;
 			private CancellationToken token;
 
-			private List<string> stack;
+			private string stack;
 
 			public User User { get { return e.User; } }
 			public Message Message { get { return e.Message; } }
@@ -137,18 +137,26 @@ namespace DiscordBot.Modules {
 				this.e = e;
 				this.script = me.script;
 				this.token = me.token.Token;
-				stack = new List<string>();
+				stack = string.Empty;
 
 				script.Globals["print"] = new Action<DynValue>(print);
+				script.Globals["write"] = new Action<DynValue>(write);
 				script.Globals["sleep"] = new Action<DynValue>(sleep);
 				script.Globals["e"] = this;
 			}
 
 			public void print(DynValue text) {
 				if (text.Type == DataType.String)
-					stack.Add(text.String);
+					stack += text.String + "\n";
 				else
-					stack.Add(text.ToString());
+					stack += text.ToString() + "\n";
+			}
+
+			public void write(DynValue text) {
+				if (text.Type == DataType.String)
+					stack += text.String;
+				else
+					stack += text.ToString();
 			}
 
 			public void sleep(DynValue time) {
@@ -160,9 +168,12 @@ namespace DiscordBot.Modules {
 
 			[MoonSharpHidden]
 			public void Dispose() {
-				string[] messages = StringHelper.SplitMessage(stack.ToArray(), 1984);
-				for (int i=0; i<messages.Length; i++) {
-					e.Channel.SafeSendMessage(messages[i]).Wait();
+				stack = stack.Trim();
+				if (!string.IsNullOrWhiteSpace(stack)) {
+					string[] messages = StringHelper.SplitMessage(stack.Split(new string[] { "\n\r", "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries), 1984);
+					for (int i = 0; i < messages.Length; i++) {
+						e.Channel.SafeSendMessage(messages[i]).Wait();
+					}
 				}
 			}
 

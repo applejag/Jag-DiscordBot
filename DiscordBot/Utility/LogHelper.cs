@@ -8,7 +8,7 @@ namespace DiscordBot.Utility {
 	public static class LogHelper {
 		public static List<string> log { get; private set; } = new List<string>();
 
-		private static string GetTimeStamp() {
+		public static string GetTimeStamp() {
 			return DateTime.Now.ToString("[yyyy-MM-dd HH:mm:ss]");
 		}
 

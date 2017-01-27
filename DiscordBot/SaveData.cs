@@ -28,6 +28,10 @@ namespace DiscordBot {
 		public string Wolfram_Key;
 
 		public string[] Bot_tokens;
+
+		public Logger.LoggedChannel[] Logged_channels;
+
+		public bool Emoji_replace;
 		#endregion
 
 		public static void Save() {

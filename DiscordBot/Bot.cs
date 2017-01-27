@@ -16,7 +16,9 @@ namespace DiscordBot {
 			"Love Yaa#9105",
 			//"Slamakans#7788",
 			"Ralev#6393",
-			"Kalleballe#9565"
+			"Kalleballe#9565",
+			"VonAsuz#9368",
+			"KAOZS#3794"
 		};
 
 		private readonly string token;
@@ -84,6 +86,8 @@ namespace DiscordBot {
 				modules.Add(new Eval());
 				modules.Add(new Admin("self"));
 				modules.Add(new LuaEval());
+				modules.Add(new Logger());
+				modules.Add(new EmojiOverride());
 			}
 			#endregion
 

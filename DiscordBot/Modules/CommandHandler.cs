@@ -26,6 +26,7 @@ namespace DiscordBot.Modules {
 			if (e.User.IsBot) return;
 			if (!bot.initialized) return;
 			if (string.IsNullOrWhiteSpace(e.Message.Text)) return;
+			if (bot.isSelfbot && e.User.Id != bot.client.CurrentUser.Id) return;
 			
 			bool isWhitelisted = bot.CheckIsWhitelisted(e.User);
 

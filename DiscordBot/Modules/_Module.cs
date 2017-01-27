@@ -43,11 +43,12 @@ namespace DiscordBot.Modules {
 
 			cmd.bot = bot;
 			cmd.module = this;
-			cmd.id = cmd.name == null ? null : (string.IsNullOrWhiteSpace(modulePrefix) ? "" : modulePrefix + ".") + cmd.name;
+			cmd.id = cmd.name == null ? null : (string.IsNullOrWhiteSpace(modulePrefix) || !cmd.useModulePrefix ? "" : modulePrefix + ".") + cmd.name;
 			Array.Sort(cmd.alias);
 
-			if (bot.commands.Any(c=>c.id == cmd.id || c.module.modulePrefix == cmd.id))
-				LogHelper.LogFailure("Command \"" + cmd.id + "\" is conflicting with another command! Skipping...");
+			Command conflict = null;
+			if ((conflict = bot.commands.Find(c=>c.id == cmd.id)) != null)
+				LogHelper.LogFailure("Command \"" + cmd.id + "\" (" + cmd.module.GetType().Name + ") is conflicting with command \"" + conflict.id + "\" (" + conflict.module.GetType().Name + ")! Skipping...");
 			else {
 				bot.commands.Add(cmd);
 				LogHelper.LogSuccess("Registered command \"" + cmd.id + "\"");

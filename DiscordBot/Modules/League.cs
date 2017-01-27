@@ -240,6 +240,11 @@ namespace DiscordBot.Modules {
 			// Reload from 'net
 			foreach (var p in SaveData.singleton.League_players) {
 				try {
+					if (client.GetServer(p.discord_server)?.GetChannel(p.discord_channel)?.GetUser(p.discord_user) == null) {
+						LogHelper.LogFailure("Player '" + p.name + "' is not connected to a valid discord user. Please re-add.");
+						continue;
+					}
+
 					// Fetch rank
 					await p.CheckRank(this);
 					await Task.Delay(1000);
@@ -338,7 +343,8 @@ namespace DiscordBot.Modules {
 				User user = server.GetUser(discord_user);
 
 				await channel.SafeSendMessage(":dancer: **Congratulations " + user.Mention + " !!** :confetti_ball::tada:\n\n:yellow_heart::purple_heart: You just promoted yourself from *" + old + "* to **" + rank + "** :metal::boom:");
-				await channel.SendFileFromWeb(URLGetProfilePicture(profileIconId));
+				string profileIconUrl = URLGetProfilePicture(profileIconId);
+				await channel.SendFileFromWeb(profileIconUrl, user.Name, Path.GetExtension(profileIconUrl));
 			}
 
 			public async Task<bool> CheckRank(Module module) {

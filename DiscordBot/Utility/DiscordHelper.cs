@@ -183,7 +183,7 @@ namespace DiscordBot.Utility {
 		}
 		
 		public static async Task<Message> SendFileFromWeb(this Channel channel, string url, string ext = ".txt") {
-			return await SendFileFromWeb(channel, url, Path.GetTempFileName(), ext);
+			return await SendFileFromWeb(channel, url, Path.GetTempFileName().Replace(".tmp", string.Empty), ext);
 		} 
 
 		/// <summary>

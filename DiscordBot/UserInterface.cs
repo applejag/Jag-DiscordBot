@@ -116,17 +116,11 @@ namespace DiscordBot {
 			return key;
 		}
 
-		public static string[] AskForTokens() {
+		public static string[] AskForTokens(string[] start = null) {
 			bool running = true;
 			string err = null;
-			List<string> tokens;
-
-			// Load from saved data
-			if (SaveData.singleton.Bot_tokens != null && SaveData.singleton.Bot_tokens.Length > 0)
-				tokens = new List<string>(SaveData.singleton.Bot_tokens);
-			else
-				tokens = new List<string>();
-
+			List<string> tokens = start?.ToList();
+			
 			do {
 				Console.Clear();
 
@@ -226,9 +220,8 @@ namespace DiscordBot {
 			} while (running);
 
 			Console.Clear();
-
-			SaveData.singleton.Bot_tokens = tokens.ToArray();
-			return SaveData.singleton.Bot_tokens;
+			
+			return tokens.ToArray();
 		}
 
 		public static void MainLoop() {

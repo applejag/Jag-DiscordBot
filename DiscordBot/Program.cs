@@ -13,6 +13,7 @@ namespace DiscordBot {
 	public sealed class Program {
 		internal static Bot[] bots;
 		internal static bool restarting = false;
+		internal static bool autorun = false;
 
 		[DllImport("Kernel32")]
 		static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
@@ -53,14 +54,15 @@ namespace DiscordBot {
 		internal static void StartupBots() {
 			SaveData.Load();
 
-			string[] tokens = UserInterface.AskForTokens();
-			SaveData.singleton.Youtube_Key = UserInterface.AskForSingleKey("Enter a youtube api key:", SaveData.singleton.Youtube_Key);
-			SaveData.singleton.Wolfram_Key = UserInterface.AskForSingleKey("Enter a wolfram alpha appid:", SaveData.singleton.Wolfram_Key);
-			bots = new Bot[tokens.Length];
+			if (!autorun) {
+				SaveData.singleton.Bot_tokens = UserInterface.AskForTokens(SaveData.singleton.Bot_tokens);
+				SaveData.singleton.Youtube_Key = UserInterface.AskForSingleKey("Enter a youtube api key:", SaveData.singleton.Youtube_Key);
+				SaveData.singleton.Wolfram_Key = UserInterface.AskForSingleKey("Enter a wolfram alpha appid:", SaveData.singleton.Wolfram_Key);
+			}
+			bots = new Bot[SaveData.singleton.Bot_tokens.Length];
 
-			for (int i=0; i<tokens.Length; i++) {
-				bots[i] = new Bot(tokens[i]);
-				
+			for (int i=0; i< SaveData.singleton.Bot_tokens.Length; i++) {
+				bots[i] = new Bot(SaveData.singleton.Bot_tokens[i]);
 			}
 		}
 
@@ -73,6 +75,8 @@ namespace DiscordBot {
 		}
 
 		static void Main(string[] args) {
+			autorun = args.Length > 0 && args.Contains("--autorun");
+
 			try {
 				ComputerHelper.Init();
 
